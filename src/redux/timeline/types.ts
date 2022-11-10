@@ -3,6 +3,12 @@ export interface Point {
   y: number
 }
 
+export interface AnchorPoint {
+  point: Point
+  control_1: Point
+  control_2: Point
+}
+
 export type TrackType = "curve" | "video"
 
 export interface Track {
@@ -13,7 +19,7 @@ export interface Track {
 
 export interface CurveTrack extends Track {
   type: "curve"
-  curve: Point[]
+  curve: AnchorPoint[]
 }
 
 export interface SampleLocation {

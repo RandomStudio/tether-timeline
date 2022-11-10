@@ -1,6 +1,6 @@
 import { createSlice, nanoid } from "@reduxjs/toolkit"
 import type { PayloadAction } from "@reduxjs/toolkit"
-import { CurveTrack, Point, Timeline, TimelineState, Track, VideoTrack } from "./types"
+import { AnchorPoint, CurveTrack, Point, Timeline, TimelineState, Track, VideoTrack } from "./types"
 
 interface UpdateTimelinePayload {
   id: string
@@ -26,7 +26,7 @@ interface RenameTrackPayload {
 
 interface UpdateCurvePayload {
   trackId: string
-  curve: Point[]
+  curve: AnchorPoint[]
 }
 
 interface VideoSamplePayload {
@@ -39,9 +39,17 @@ interface SetSampleLocationsPayload {
   toTrackId: string
 }
 
-const getDefaultCurve = (): Point[] => [
-  { x: 0.0, y: 0.0 },
-  { x: 1.0, y: 0.0 },
+const getDefaultCurve = (): AnchorPoint[] => [
+  {
+    point: { x: 0.0, y: 0.5 },
+    control_1: { x: 0.0, y: 0.5 },
+    control_2: { x: 0.125, y: 0.5 }
+  },
+  {
+    point: { x: 1.0, y: 0.5 },
+    control_1: { x: 0.875, y: 0.5 },
+    control_2: { x: 1.0, y: 0.5 }
+  },
 ]
 
 const getNewTimeline = (name: string): Timeline => ({
@@ -231,9 +239,19 @@ const timelineEditorSlice = createSlice({
       const track = findTrackById(state, action.payload.trackId)
 
       if (track && track.type === "curve") {
-        (track as CurveTrack).curve = action.payload.curve.map(c => ({
-          x: Math.max(0, Math.min(1, c.x)),
-          y: Math.max(0, Math.min(1, c.y))
+        (track as CurveTrack).curve = action.payload.curve.map(({ point, control_1, control_2 }) => ({
+          point: {
+            x: Math.max(0, Math.min(1, point.x)),
+            y: Math.max(0, Math.min(1, point.y))
+          },
+          control_1: {
+            x: Math.max(0, Math.min(1, control_1.x)),
+            y: Math.max(0, Math.min(1, control_1.y))
+          },
+          control_2: {
+            x: Math.max(0, Math.min(1, control_2.x)),
+            y: Math.max(0, Math.min(1, control_2.y))
+          },
         }))
       }
     },
