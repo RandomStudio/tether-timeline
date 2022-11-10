@@ -1,0 +1,54 @@
+.timeline {
+  width: 100%;
+  height: 90%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+
+  .controls {
+    width: 100%;
+    margin: 0.5em 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    .spacer {
+      flex-grow: 1;
+    }
+
+    .time {
+      margin-left: 1em;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .view-control {
+      display: flex;
+      flex-direction: row;
+    }
+
+    .loop-control {
+      margin-left: 0.5em;
+    }
+  }
+
+  .scroller {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    border: 1px solid #999;
+  }
+
+  .tracks {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .footer-controls {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+  }
+}
