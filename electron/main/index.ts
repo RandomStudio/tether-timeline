@@ -24,7 +24,7 @@ import rc from "rc"
 import { decode, encode } from '@msgpack/msgpack'
 import { TetherAgent, logger } from '@randomstudio/tether'
 
-import { ConfigOptions, TrackValues } from "./types"
+import { ConfigOptions, TrackValue } from "./types"
 import { copyFile, readFile, writeFile } from 'fs/promises'
 import { nanoid } from '@reduxjs/toolkit'
 
@@ -38,7 +38,8 @@ const config: ConfigOptions = parse(rc(
       port: 1883,
       username: "tether",
       password: "sp_ceB0ss!",
-      subscription: "mugler-bodyspace-engine/+/state",
+      startPlaybackTopic: "+/+/start-playback",
+      stopPlaybackTopic: "+/+/stop-playback",
       agentID: nanoid(),
     },
   }
@@ -116,21 +117,24 @@ const decodeMessagePayload = (payload: Buffer): any => {
 }
 
 const createTetherAgent = async (): Promise<TetherAgent> => {
-  const { host, port, username, password, subscription, agentID } = config.tether
+  const { agentID, startPlaybackTopic, stopPlaybackTopic, ...clientOptions } = config.tether
   const agent = await TetherAgent.create(
     "tether-timeline",
-    { host, port, username, password },
+    clientOptions,
     config.loglevel,
     agentID
   )
-  // listen for messages on a "play" input
-  agent.createInput('play', subscription, { qos: 2 }).onMessage(payload => {
+  agent.createInput('start-playback', startPlaybackTopic, { qos: 2 }).onMessage(payload => {
     const stateName = decodeMessagePayload(payload)
-    logger.debug(`Received Tether message on topic ${subscription} with payload ${stateName}`)
-    // notify frontend to start playback on this timeline
-    win?.webContents.send('play-timeline', stateName)
+    logger.debug(`Received start message on topic ${startPlaybackTopic} with payload ${stateName}`)
+    win?.webContents.send('start-playback', stateName)
+  })
+  agent.createInput('stop-playback', stopPlaybackTopic, { qos: 2 }).onMessage(payload => {
+    logger.debug(`Received stop message on topic ${stopPlaybackTopic}`)
+    win?.webContents.send('stop-playback')
   })
   // create output plug for completion events
+  agent.createOutput('started')
   agent.createOutput('update')
   agent.createOutput('completed')
   return agent
@@ -147,7 +151,12 @@ const selectVideoFile = async (): Promise<string> => {
   return 'http://localhost:8000/file/' + path.basename(file)
 }
 
-const onTimelineUpdate = (event: IpcMainEvent, name: string, time: number, tracks: TrackValues[]) => {
+const onTimelineStarted = (event: IpcMainEvent, name: string) => {
+  logger.debug(`Sending started message for timeline "${name}"`)
+  tetherAgent?.getOutput('started')?.publish(Buffer.from(encode(name)))
+}
+
+const onTimelineUpdate = (event: IpcMainEvent, name: string, time: number, tracks: TrackValue[]) => {
   logger.debug(`Sending update message for timeline "${name}" at time ${time}. Track values:`, tracks)
   tetherAgent?.getOutput('update')?.publish(Buffer.from(encode({ name, time, tracks })))
 }
@@ -184,6 +193,7 @@ const importJSON = async (
 app.whenReady().then(async () => {
   tetherAgent = await createTetherAgent()
   ipcMain.handle('select-video-file', selectVideoFile)
+  ipcMain.on('timeline-started', onTimelineStarted)
   ipcMain.on('timeline-update', onTimelineUpdate)
   ipcMain.on('timeline-completed', onTimelineCompleted)
   ipcMain.handle('export-json', exportJSON)

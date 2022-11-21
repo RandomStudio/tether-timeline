@@ -103,6 +103,7 @@ class TimelineComponent extends React.Component<TimelineProps, TimelineState> {
         position: Math.max(0, Math.min(1, fromPosition)),
         lastUpdatedAt: Date.now(),
       })
+      // TODO should "started" message also be published when playback is started while already playing? Maybe only if `fromPosition` !== NaN?
       return
     }
     const { interval } = this.state
@@ -113,6 +114,8 @@ class TimelineComponent extends React.Component<TimelineProps, TimelineState> {
       lastUpdatedAt: Date.now(),
       interval: setInterval(this.update, 1000 / 60)
     })
+    const { timeline: { name } } = this.props
+    window.electronAPI.sendTimelineStarted(name)
     this.update()
   }
 

@@ -1,19 +1,24 @@
-import { logger } from "@randomstudio/tether"
+import { IClientOptions, logger } from "@randomstudio/tether"
 
+interface TetherConfig extends IClientOptions {
+  startPlaybackTopic: string
+  stopPlaybackTopic: string
+  agentID?: string
+}
 export interface ConfigOptions {
   loglevel: logger.LogLevelDesc
   ioFilePath: string
-  tether: {
-    host: string
-    port: number
-    username?: string
-    password?: string
-    subscription: string
-    agentID?: string
-  }
+  tether: TetherConfig
 }
 
-export interface TrackValues {
+interface Color {
+  r: number
+  g: number
+  b: number
+}
+
+export interface TrackValue {
   track: string
-  values: number[] | number[][]
+  value?: number
+  colors?: Color[][]
 }

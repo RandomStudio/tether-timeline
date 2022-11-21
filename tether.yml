@@ -1,0 +1,160 @@
+asyncapi: '2.4.0'
+info:
+  title: Tether Timeline Agent
+  version: '1.0.0'
+  description: |
+    Tether agent embedded in an Electron app, which allows the creation and playback of timelines with multiple tracks.
+
+servers:
+  $ref: "https://raw.githubusercontent.com/RandomStudio/tether/asyncapi/tether.yml#/components/servers"
+
+channels:
+  tether-timeline/{agentIdOrGroup}/start-playback:
+    description:
+      $ref: "#/components/channels/start-playback/description"
+    parameters:
+      $ref: "#/components/channels/start-playback/parameters"
+    publish:
+      $ref: "#/components/channels/start-playback/publish"
+  tether-timeline/{agentIdOrGroup}/stop-playback:
+    description:
+      $ref: "#/components/channels/stop-playback/description"
+    parameters:
+      $ref: "#/components/channels/stop-playback/parameters"
+    publish:
+      $ref: "#/components/channels/stop-playback/publish"
+  tether-timeline/{agentIdOrGroup}/started:
+    description:
+      $ref: "#/components/channels/started/description"
+    parameters:
+      $ref: "#/components/channels/started/parameters"
+    subscribe:
+      $ref: "#/components/channels/started/subscribe"
+  tether-timeline/{agentIdOrGroup}/update:
+    description:
+      $ref: "#/components/channels/update/description"
+    parameters:
+      $ref: "#/components/channels/update/parameters"
+    subscribe:
+      $ref: "#/components/channels/update/subscribe"
+  tether-timeline/{agentIdOrGroup}/completed:
+    description:
+      $ref: "#/components/channels/completed/description"
+    parameters:
+      $ref: "#/components/channels/completed/parameters"
+    subscribe:
+      $ref: "#/components/channels/completed/subscribe"
+
+components:
+  channels:
+    started:
+      description: Name of the timeline on which playback has been started
+      subscribe:
+        summary: Output plug for timeline playback start
+        message:
+          $ref: "#/components/messages/started"
+    update:
+      description: Name, current time (in seconds) and current track values of the timeline that was updated
+      subscribe:
+        summary: Output plug for timeline data emitted on update
+        message:
+          $ref: "#/components/messages/update"
+    completed:
+      description: Name of the timeline that completed playback
+      subscribe:
+        summary: Output plug for timeline completion
+        message:
+          $ref: "#/components/messages/completed"
+    start-playback:
+      description: The name of the timeline that should be started
+      parameters:
+        agentIdOrGroup:
+          $ref: "#/components/parameters/agentIdOrGroup"
+      publish:
+        summary: Input Plug for the target timeline name
+        message:
+          $ref: "#/components/messages/start-playback"
+    stop-playback:
+      description: Command to stop playback on any timeline that might currently be playing
+      parameters:
+        agentIdOrGroup:
+          $ref: "#/components/parameters/agentIdOrGroup"
+      publish:
+        summary: Input Plug to stop playback
+        message:
+          $ref: "#/components/messages/stop-playback"
+
+  messages:
+    start-playback:
+      name: start-playback
+      title: Start Playback
+      summary: Message to start playback on a specific timeline. This will stop any other currently playing timeline and switch to the indicated one.
+      payload:
+        $ref: "#/components/schemas/start-playback-payload"
+    stop-playback:
+      name: stop-playback
+      title: Stop Playback
+      summary: Message to stop playback altogether
+    started:
+      name: started
+      title: Started
+      summary: Event indicating playback of a timeline having started
+      payload:
+        $ref: "#/components/schemas/started-payload"
+    update:
+      name: update
+      title: Update
+      summary: Data of the current state of the current timeline, including current values of all of its tracks
+      payload:
+        $ref: "#/components/schemas/update-payload"
+    completed:
+      name: completed
+      title: Completed
+      summary: Event indicating playback of a timeline having completed
+      payload:
+        $ref: "#/components/schemas/completed-payload"
+
+  schemas:
+    started-payload:
+      type: string
+      description: The name of the timeline that started playing
+    update-payload:
+      type: object
+      properties:
+        name:
+          type: string
+          description: The name of the updated timeline
+        time:
+          type: number
+          description: The position of the timeline, in seconds
+        tracks:
+          type: array
+          items:
+            type: object
+            required:
+              - track
+            properties:
+              track:
+                type: string
+                description: The name of the track
+              value:
+                type: number
+                minimum: 0
+                maximum: 1
+                description: Current value of the curve on this track
+              colors:
+                type: array
+                description: List of color samples as a 2D array
+                items:
+                  type: array
+                  description: List of color sample values for one sample location
+                  items:
+                    type: number
+                    description: Single color value
+    completed-payload:
+      type: string
+      description: The name of the timeline that has completed
+    start-playback-payload:
+      type: string
+      description: Name of the timeline to start playback on
+

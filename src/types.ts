@@ -1,13 +1,17 @@
 import { IpcRendererEvent } from "electron";
 
-export interface TrackValues {
+interface TrackValue {
   track: string
-  values: number[] | number[][]
+  value?: number
+  colors?: number[][]
 }
+
 export interface IElectronAPI {
-  onPlayTimeline: (callback: (name: string) => void) => void
+  onStartPlayback: (callback: (name: string) => void) => void
+  onStopPlayback: (callback: () => void) => void
   selectVideoFile: () => Promise<string>,
-  sendTimelineUpdate: (name: string, time: number, tracks: TrackValues[]) => void
+  sendTimelineStarted: (name: string) => void
+  sendTimelineUpdate: (name: string, time: number, tracks: TrackValue[]) => void
   sendTimelineCompleted: (name: string) => void
   importJSON: () => Promise<string>
   exportJSON: (json: string) => Promise<void>

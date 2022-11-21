@@ -30,10 +30,15 @@ const App: React.FC = () => {
 
   const timelineRef = useRef<typeof TimelineComponent>(null!)
 
-  window.electronAPI.onPlayTimeline((name: string) => {
+  window.electronAPI.onStartPlayback((name: string) => {
     store.dispatch(selectTimelineByName(name))
     // @ts-ignore
     timelineRef.current?.play(0)
+  })
+
+  window.electronAPI.onStopPlayback(() => {
+    // @ts-ignore
+    timelineRef.current?.pause()
   })
 
   const importData = async () => {
@@ -112,30 +117,11 @@ const App: React.FC = () => {
 
   const onTimelineUpdate = (name: string, time: number, trackValues: (TrackValue | TrackValueList)[]): void => {
     // publish timeline progress and track values
-    window.electronAPI.sendTimelineUpdate(name, time, trackValues.map(tv => ({
-      track: tv.trackName,
-      values: tv.type === "single"
-        ? [ (tv as TrackValue).value ]
-        : (tv as TrackValueList).values
-    })))
-    // trackValues.forEach(tv => {
-    //   switch (tv.type) {
-    //     case "single":
-    //       const { value } = tv as TrackValue
-    //       // TODO publish track id & value
-    //     break
-    //     case "list":
-    //       const { trackId, values } = tv as TrackValueList
-    //       if (values) {
-    //         // values contains an array of color values for each sample location
-    //         // (values as number[][]).forEach((colors, i) => {
-    //         //   //
-    //         // })
-    //         // TODO publish track id & colors
-    //       }
-    //     break
-    //   }
-    // })
+    window.electronAPI.sendTimelineUpdate(name, time, trackValues.map(tv => (
+      tv.type === "single"
+        ? { track: tv.trackName, value: (tv as TrackValue).value }
+        : { track: tv.trackName, colors: (tv as TrackValueList).values }
+    )))
   }
 
   return (
