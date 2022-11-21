@@ -9,6 +9,12 @@ import { TrackProps } from ".."
 import styles from "styles/components/timeline/track.module.scss"
 import { PointOfSale } from "@mui/icons-material"
 
+enum DragPointType {
+  ANCHOR,
+  CONTROL_1,
+  CONTROL_2,
+}
+
 interface DragInfo {
   index: number
   startX: number
@@ -19,6 +25,7 @@ interface DragInfo {
   maxOffsetX: number
   prevPoint: AnchorPoint | null
   nextPoint: AnchorPoint | null
+  type: DragPointType
 }
 
 const emptyDragInfo: DragInfo = {
@@ -30,8 +37,13 @@ const emptyDragInfo: DragInfo = {
   minOffsetX: 0,
   maxOffsetX: 0,
   prevPoint: null,
-  nextPoint: null
+  nextPoint: null,
+  type: DragPointType.ANCHOR
 }
+
+const clamp = (a: number, min: number, max: number) => (
+  Math.max(min, Math.min(max, a))
+)
 
 const lerp = (a: number, b: number, factor: number): number => (
   a * (1 - factor) + (b * factor)
@@ -56,14 +68,42 @@ const getPointAfter = (curve: AnchorPoint[], position: number): AnchorPoint => {
     : curve[curve.length - 1]
 }
 
+const curve = (a: number, b: number, c: number, d: number, t: number) => (
+  Math.pow(1 - t, 3) * a +
+    3 * Math.pow(1 - t, 2) * t * b +
+    3 * (1 - t) * Math.pow(t, 2) * c +
+    Math.pow(t, 3) * d
+)
+
+const bezier = (p1: Point, c1: Point, c2: Point, p2: Point, t: number) => ({
+  x: curve(p1.x, c1.x, c2.x, p2.x, t),
+  y: curve(p1.y, c1.y, c2.y, p2.y, t),
+})
+
+const findTForX = (p1: Point, c1: Point, c2: Point, p2: Point, targetX: number, precision: number = 0.0001): number => {
+  const b = (t: number) => bezier(p1, c1, c2, p2, t).x
+  let lower = 0, upper = 1
+  let mid = lower + 0.5 * (upper - lower)
+  let x = b(mid)
+  let i = 0;
+  while (Math.abs(targetX - x) > precision) {
+    if (targetX > x) {
+      lower = mid
+    } else {
+      upper = mid
+    }
+    mid = lower + 0.5 * (upper - lower)
+    x = b(mid)
+  }
+  return mid
+}
+
 export const calculateValue = (curve: AnchorPoint[], position: number) => {
   const prev = getPointBefore(curve, position)
   const next = getPointAfter(curve, position)
-  const t = (position - prev.point.x) / (next.point.x - prev.point.x)
-  return Math.pow(1 - t, 3) * prev.point.y +
-    3 * Math.pow(1 - t, 2) * t * prev.control_2.y +
-    3 * (1 - t) * Math.pow(t, 2) * next.control_1.y +
-    Math.pow(t, 3) * next.point.y;
+  // const t = (position - prev.point.x) / (next.point.x - prev.point.x)
+  const t = findTForX(prev.point, prev.control_2, next.control_1, next.point, position, 0.0001)
+  return bezier(prev.point, prev.control_2, next.control_1, next.point, t).y
 }
 
 interface CurveEditorProps extends TrackProps {
@@ -158,28 +198,39 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
     }))
   }
 
-  const onGrabPoint = (event: React.MouseEvent<SVGCircleElement>, index: number) => {
+  const onGrabPoint = (event: React.MouseEvent<SVGCircleElement>, index: number, type: DragPointType) => {
     setSelectedPointIndex(index)
-    const { x } = curve[index].point
-    const prev = getPointBefore(curve, curve[index].point.x)
-    const next = getPointAfter(curve, curve[index].point.x)
+    const { point, control_1, control_2 } = curve[index]
+    const prev = getPointBefore(curve, point.x)
+    const next = getPointAfter(curve, point.x)
+    const minOffsetX = type === DragPointType.ANCHOR
+      ? (prev.point.x - point.x) * width * scale
+      : type === DragPointType.CONTROL_1
+        ? (prev.point.x - control_1.x) * width * scale
+        : (point.x - control_2.x) * width * scale
+    const maxOffsetX = type === DragPointType.ANCHOR
+      ? (next.point.x - point.x) * width * scale
+      : type === DragPointType.CONTROL_1
+        ? (point.x - control_1.x) * width * scale
+        : (next.point.x - control_2.x) * width * scale
     setDragInfo({
       index,
       startX: event.pageX,
       startY: event.pageY,
       offsetX: 0,
       offsetY: 0,
-      minOffsetX: (prev.point.x - x) * width * scale,
-      maxOffsetX: (next.point.x - x) * width * scale,
+      minOffsetX,
+      maxOffsetX,
       prevPoint: prev,
-      nextPoint: next
+      nextPoint: next,
+      type
     })
   }
 
   const onDrag = (event: React.MouseEvent<HTMLDivElement>) => {
     if (dragInfo.index > -1) {
-      const { index, minOffsetX, maxOffsetX, startX, startY } = dragInfo
-      const allowHDrag = index > 0 && index < curve.length - 1
+      const { index, minOffsetX, maxOffsetX, startX, startY, type } = dragInfo
+      const allowHDrag = type !== DragPointType.ANCHOR || (index > 0 && index < curve.length - 1)
       setDragInfo({
         ...dragInfo,
         offsetX: allowHDrag
@@ -195,32 +246,46 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
   }
 
   const onRelease = (event: React.MouseEvent<HTMLDivElement>) => {
-    const { prevPoint, nextPoint } = dragInfo;
+    const {index, prevPoint, nextPoint, offsetX, offsetY, type } = dragInfo;
     store.dispatch(updateCurve({
       trackId: id,
-      curve: curve.map((a, i) => {
-        if (i === dragInfo.index) {
-          const p = {
-            x: Math.max(prevPoint?.point.x || 0,
-              Math.min(nextPoint?.point.x || 1,
-                a.point.x + dragInfo.offsetX / (width * scale)
-              )
-            ),
-            y: a.point.y - (dragInfo.offsetY / height)
-          }
+      curve: curve.map(({ point, control_1, control_2 }, i) => {
+        if (i === index) {
+          const p = type === DragPointType.ANCHOR
+            ? {
+              x: clamp(
+                point.x + (offsetX / (width * scale)),
+                prevPoint?.point.x || 0,
+                nextPoint?.point.x || 1
+              ),
+              y: point.y - (offsetY / height)
+            }
+            : point
+          const c1 = type === DragPointType.CONTROL_1
+            ? {
+              x: control_1.x + (offsetX / (width * scale)),
+              y: control_1.y - (offsetY / height)
+            }
+            : {
+              x: p.x + (control_1.x - point.x),
+              y: p.y + (control_1.y - point.y),
+            }
+          const c2 = type === DragPointType.CONTROL_2
+            ? {
+              x: control_2.x + (offsetX / (width * scale)),
+              y: control_2.y - (offsetY / height)
+            }
+            : {
+              x: p.x + (control_2.x - point.x),
+              y: p.y + (control_2.y - point.y),
+            }
           return {
             point: p,
-            control_1: {
-              x: Math.max(prevPoint?.point.x || 0, p.x - 0.125),
-              y: p.y
-            },
-            control_2: {
-              x: Math.min(nextPoint?.point.x || 1, p.x + 0.125),
-              y: p.y
-            }
+            control_1: c1,
+            control_2: c2
           }
         } else {
-          return a
+          return { point, control_1, control_2 }
         }
       })
     }))
@@ -229,21 +294,21 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
 
   const createPath = (points: AnchorPoint[], width: number, height: number): string => {
 
-    const calcPos = (point: Point, isDragTarget: boolean = false): Point => ({
-      x: point.x * width + (isDragTarget ? dragInfo.offsetX : 0),
-      y: (1.0 - point.y) * height + (isDragTarget ? dragInfo.offsetY : 0),
+    const calcPos = (p: Point, isDragTarget: boolean = false): Point => ({
+      x: p.x * width + (isDragTarget ? dragInfo.offsetX : 0),
+      y: (1.0 - p.y) * height + (isDragTarget ? dragInfo.offsetY : 0),
     })
 
    return points.reduce((path, {point, control_1, control_2}, i, arr) => {
-      const p = calcPos(point, dragInfo.index == i)
-      const cc = calcPos(control_1, dragInfo.index === i)
+      const p = calcPos(point, dragInfo.index == i && dragInfo.type === DragPointType.ANCHOR)
+      const cc = calcPos(control_1, dragInfo.index === i && dragInfo.type === DragPointType.CONTROL_1)
 
       if (i === 0) {
         return `M${p.x},${p.y}`
       }
 
       const prev = arr[i - 1]
-      const pc = calcPos(prev.control_2, dragInfo.index === i - 1)
+      const pc = calcPos(prev.control_2, dragInfo.index === i - 1 && dragInfo.type === DragPointType.CONTROL_2)
 
       return path + ` C${pc.x},${pc.y} ${cc.x},${cc.y} ${p.x},${p.y}`
     }, '')
@@ -296,19 +361,19 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
               strokeWidth="1"
               d={createPath(curve, width * scale, height)}
             />
-            { curve.map(({ point, control_1, control_2 }, i) => {
+            { curve.map(({ point, control_1, control_2 }, i, arr) => {
               const isDragging = dragInfo.index == i;
               const p = {
-                x: point.x * width * scale + (isDragging ? dragInfo.offsetX : 0),
-                y: (1.0 - point.y) * height + (isDragging ? dragInfo.offsetY : 0)
+                x: point.x * width * scale + (isDragging && dragInfo.type === DragPointType.ANCHOR ? dragInfo.offsetX : 0),
+                y: (1.0 - point.y) * height + (isDragging && dragInfo.type === DragPointType.ANCHOR ? dragInfo.offsetY : 0)
               }
               const c1 = {
-                x: control_1.x * width * scale + (isDragging ? dragInfo.offsetX : 0),
-                y: (1.0 - control_1.y) * height + (isDragging ? dragInfo.offsetY : 0)
+                x: control_1.x * width * scale + (isDragging && dragInfo.type === DragPointType.CONTROL_1 ? dragInfo.offsetX : 0),
+                y: (1.0 - control_1.y) * height + (isDragging && dragInfo.type === DragPointType.CONTROL_1? dragInfo.offsetY : 0)
               }
               const c2 = {
-                x: control_2.x * width * scale + (isDragging ? dragInfo.offsetX : 0),
-                y: (1.0 - control_2.y) * height + (isDragging ? dragInfo.offsetY : 0)
+                x: control_2.x * width * scale + (isDragging && dragInfo.type === DragPointType.CONTROL_2 ? dragInfo.offsetX : 0),
+                y: (1.0 - control_2.y) * height + (isDragging && dragInfo.type === DragPointType.CONTROL_2 ? dragInfo.offsetY : 0)
               }
               return (
                 <React.Fragment key={i}>
@@ -324,19 +389,19 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
                     fill={selectedPointIndex == i || dragInfo.index == i ? "#1976D2" : "#ffffff"}
                     stroke="#1976D2" strokeWidth="1"
                     cx={p.x} cy={p.y} r="5"
-                    cursor="pointer" pointerEvents="all" onMouseDown={e => onGrabPoint(e, i)}
+                    cursor="pointer" pointerEvents="all" onMouseDown={e => onGrabPoint(e, i, DragPointType.ANCHOR)}
                   />
                   <circle
                     fill="rgba(25, 118, 210, 0.5)"
                     stroke="rgba(25, 118, 210, 0.5)" strokeWidth="1"
                     cx={c1.x} cy={c1.y} r="3"
-                    pointerEvents="none"
+                    cursor="pointer" pointerEvents="all" onMouseDown={e => onGrabPoint(e, i, DragPointType.CONTROL_1)}
                   />
                   <circle
                     fill="rgba(25, 118, 210, 0.5)"
                     stroke="rgba(25, 118, 210, 0.5)" strokeWidth="1"
                     cx={c2.x} cy={c2.y} r="3"
-                    pointerEvents="none"
+                    cursor="pointer" pointerEvents="all" onMouseDown={e => onGrabPoint(e, i, DragPointType.CONTROL_2)}
                   />
                 </React.Fragment>
               )
