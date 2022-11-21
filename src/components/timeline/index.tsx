@@ -44,7 +44,7 @@ export interface TrackValueList {
 export interface TimelineProps {
   timeline: Timeline
   onAutoPopulate: ((id: string) => void) | null
-  onUpdate: ((values: (TrackValue | TrackValueList)[]) => void) | null // emit an array of single value or lists of values
+  onUpdate: ((name: string, time: number, values: (TrackValue | TrackValueList)[]) => void) | null // emit an array of single value or lists of values
 }
 
 export interface TimelineState {
@@ -162,10 +162,10 @@ class TimelineComponent extends React.Component<TimelineProps, TimelineState> {
   }
 
   emitValues = () => {
-    const { timeline: { tracks }, onUpdate } = this.props
+    const { timeline: { name, tracks, duration }, onUpdate } = this.props
     const { position } = this.state
     if (onUpdate != null) {
-      onUpdate(tracks.reduce((list, t) => {
+      onUpdate(name, position * duration, tracks.reduce((list, t) => {
         switch(t.type) {
           case "curve":
             return [

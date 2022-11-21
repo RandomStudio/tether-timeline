@@ -12,3 +12,8 @@ export interface ConfigOptions {
     agentID?: string
   }
 }
+
+export interface TrackValues {
+  track: string
+  values: number[] | number[][]
+}

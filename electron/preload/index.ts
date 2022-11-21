@@ -1,4 +1,5 @@
 import { ipcMain, IpcRendererEvent } from "electron"
+import { TrackValues } from "../main/types"
 
 function domReady(condition: DocumentReadyState[] = ['complete', 'interactive']) {
   return new Promise(resolve => {
@@ -99,6 +100,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('play-timeline', (e, n) => callback(n))
   },
   selectVideoFile: () => ipcRenderer.invoke('select-video-file'),
+  sendTimelineUpdate: (name: string, time: number, tracks: TrackValues[]) => ipcRenderer.send('timeline-update', name, time, tracks),
   sendTimelineCompleted: (name: string) => ipcRenderer.send('timeline-completed', name),
   exportJSON: async (json: string) => ipcRenderer.invoke('export-json', json),
   importJSON: async () => ipcRenderer.invoke('import-json'),

@@ -24,7 +24,7 @@ import rc from "rc"
 import { decode, encode } from '@msgpack/msgpack'
 import { TetherAgent, logger } from '@randomstudio/tether'
 
-import { ConfigOptions } from "./types"
+import { ConfigOptions, TrackValues } from "./types"
 import { copyFile, readFile, writeFile } from 'fs/promises'
 import { nanoid } from '@reduxjs/toolkit'
 
@@ -131,6 +131,7 @@ const createTetherAgent = async (): Promise<TetherAgent> => {
     win?.webContents.send('play-timeline', stateName)
   })
   // create output plug for completion events
+  agent.createOutput('update')
   agent.createOutput('completed')
   return agent
 }
@@ -144,6 +145,11 @@ const selectVideoFile = async (): Promise<string> => {
   })[0]
   await copyFile(file, join(process.env.ASSET_DIR, path.basename(file)))
   return 'http://localhost:8000/file/' + path.basename(file)
+}
+
+const onTimelineUpdate = (event: IpcMainEvent, name: string, time: number, tracks: TrackValues[]) => {
+  logger.debug(`Sending update message for timeline "${name}" at time ${time}. Track values:`, tracks)
+  tetherAgent?.getOutput('update')?.publish(Buffer.from(encode({ name, time, tracks })))
 }
 
 const onTimelineCompleted = (event: IpcMainEvent, name: string) => {
@@ -178,6 +184,7 @@ const importJSON = async (
 app.whenReady().then(async () => {
   tetherAgent = await createTetherAgent()
   ipcMain.handle('select-video-file', selectVideoFile)
+  ipcMain.on('timeline-update', onTimelineUpdate)
   ipcMain.on('timeline-completed', onTimelineCompleted)
   ipcMain.handle('export-json', exportJSON)
   ipcMain.handle('import-json', importJSON)

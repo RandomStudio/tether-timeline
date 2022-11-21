@@ -4,10 +4,11 @@ import { updateCurve } from "@/redux/timeline/slice"
 import { AnchorPoint, CurveTrack, Point } from "@/redux/timeline/types"
 import { IconButton, Tooltip } from "@mui/material"
 import DeleteIcon from '@mui/icons-material/Delete';
+
+import { findTForX, cubicBezier } from "../../../../utils/bezier-helper"
 import { TrackProps } from ".."
 
 import styles from "styles/components/timeline/track.module.scss"
-import { PointOfSale } from "@mui/icons-material"
 
 enum DragPointType {
   ANCHOR,
@@ -68,42 +69,12 @@ const getPointAfter = (curve: AnchorPoint[], position: number): AnchorPoint => {
     : curve[curve.length - 1]
 }
 
-const curve = (a: number, b: number, c: number, d: number, t: number) => (
-  Math.pow(1 - t, 3) * a +
-    3 * Math.pow(1 - t, 2) * t * b +
-    3 * (1 - t) * Math.pow(t, 2) * c +
-    Math.pow(t, 3) * d
-)
-
-const bezier = (p1: Point, c1: Point, c2: Point, p2: Point, t: number) => ({
-  x: curve(p1.x, c1.x, c2.x, p2.x, t),
-  y: curve(p1.y, c1.y, c2.y, p2.y, t),
-})
-
-const findTForX = (p1: Point, c1: Point, c2: Point, p2: Point, targetX: number, precision: number = 0.0001): number => {
-  const b = (t: number) => bezier(p1, c1, c2, p2, t).x
-  let lower = 0, upper = 1
-  let mid = lower + 0.5 * (upper - lower)
-  let x = b(mid)
-  let i = 0;
-  while (Math.abs(targetX - x) > precision) {
-    if (targetX > x) {
-      lower = mid
-    } else {
-      upper = mid
-    }
-    mid = lower + 0.5 * (upper - lower)
-    x = b(mid)
-  }
-  return mid
-}
-
 export const calculateValue = (curve: AnchorPoint[], position: number) => {
   const prev = getPointBefore(curve, position)
   const next = getPointAfter(curve, position)
   // const t = (position - prev.point.x) / (next.point.x - prev.point.x)
-  const t = findTForX(prev.point, prev.control_2, next.control_1, next.point, position, 0.0001)
-  return bezier(prev.point, prev.control_2, next.control_1, next.point, t).y
+  const t = findTForX(prev.point.x, prev.control_2.x, next.control_1.x, next.point.x, position, 0.0001)
+  return cubicBezier(prev.point, prev.control_2, next.control_1, next.point, t).y
 }
 
 interface CurveEditorProps extends TrackProps {
@@ -135,20 +106,6 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
       });
     }
   }, []);
-
-  // const setPointY = (y: number) => {
-  //   if (selectedPointIndex == -1) return
-  //   if (isNaN(y)) return
-  //   store.dispatch(updateCurve({
-  //     trackId: id,
-  //     curve: curve.map((p, i) => ({
-  //       x: p.point.x,
-  //       y: i === selectedPointIndex
-  //         ? Math.max(0, Math.min(1, y))
-  //         : p.point.y
-  //     }))
-  //   }))
-  // }
 
   const deletePoint = () => {
     if (selectedPointIndex == -1) return

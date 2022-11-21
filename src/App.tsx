@@ -110,26 +110,32 @@ const App: React.FC = () => {
     return a.map((v, i) => mix(v, b[i], factor))
   }
 
-  const onTimelineUpdate = (trackValues: (TrackValue | TrackValueList)[]): void => {
-    // TODO publish timeline name & position
-    trackValues.forEach(tv => {
-      switch (tv.type) {
-        case "single":
-          const { value } = tv as TrackValue
-          // TODO publish track id & value
-        break
-        case "list":
-          const { trackId, values } = tv as TrackValueList
-          if (values) {
-            // values contains an array of color values for each sample location
-            // (values as number[][]).forEach((colors, i) => {
-            //   //
-            // })
-            // TODO publish track id & colors
-          }
-        break
-      }
-    })
+  const onTimelineUpdate = (name: string, time: number, trackValues: (TrackValue | TrackValueList)[]): void => {
+    // publish timeline progress and track values
+    window.electronAPI.sendTimelineUpdate(name, time, trackValues.map(tv => ({
+      track: tv.trackName,
+      values: tv.type === "single"
+        ? [ (tv as TrackValue).value ]
+        : (tv as TrackValueList).values
+    })))
+    // trackValues.forEach(tv => {
+    //   switch (tv.type) {
+    //     case "single":
+    //       const { value } = tv as TrackValue
+    //       // TODO publish track id & value
+    //     break
+    //     case "list":
+    //       const { trackId, values } = tv as TrackValueList
+    //       if (values) {
+    //         // values contains an array of color values for each sample location
+    //         // (values as number[][]).forEach((colors, i) => {
+    //         //   //
+    //         // })
+    //         // TODO publish track id & colors
+    //       }
+    //     break
+    //   }
+    // })
   }
 
   return (
