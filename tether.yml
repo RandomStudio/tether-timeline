@@ -53,23 +53,32 @@ components:
         summary: Output plug for timeline playback start
         message:
           $ref: "#/components/messages/started"
+      parameters:
+        agentIdOrGroup:
+          $ref: "https://raw.githubusercontent.com/RandomStudio/tether/asyncapi/tether.yml#/components/parameters/agentIdOrGroup"
     update:
       description: Name, current time (in seconds) and current track values of the timeline that was updated
       subscribe:
         summary: Output plug for timeline data emitted on update
         message:
           $ref: "#/components/messages/update"
+      parameters:
+        agentIdOrGroup:
+          $ref: "https://raw.githubusercontent.com/RandomStudio/tether/asyncapi/tether.yml#/components/parameters/agentIdOrGroup"
     completed:
       description: Name of the timeline that completed playback
       subscribe:
         summary: Output plug for timeline completion
         message:
           $ref: "#/components/messages/completed"
+      parameters:
+        agentIdOrGroup:
+          $ref: "https://raw.githubusercontent.com/RandomStudio/tether/asyncapi/tether.yml#/components/parameters/agentIdOrGroup"
     start-playback:
       description: The name of the timeline that should be started
       parameters:
         agentIdOrGroup:
-          $ref: "#/components/parameters/agentIdOrGroup"
+          $ref: "https://raw.githubusercontent.com/RandomStudio/tether/asyncapi/tether.yml#/components/parameters/agentIdOrGroup"
       publish:
         summary: Input Plug for the target timeline name
         message:
@@ -78,7 +87,7 @@ components:
       description: Command to stop playback on any timeline that might currently be playing
       parameters:
         agentIdOrGroup:
-          $ref: "#/components/parameters/agentIdOrGroup"
+          $ref: "https://raw.githubusercontent.com/RandomStudio/tether/asyncapi/tether.yml#/components/parameters/agentIdOrGroup"
       publish:
         summary: Input Plug to stop playback
         message:
