@@ -1,14 +1,13 @@
-import React, { useLayoutEffect, useRef, useState } from "react"
-import { store } from "@/redux/store"
-import { updateCurve } from "@/redux/timeline/slice"
-import { AnchorPoint, CurveTrack, Point } from "@/redux/timeline/types"
-import { IconButton, Tooltip } from "@mui/material"
+import { store } from '@/redux/store';
+import { updateCurve } from '@/redux/timeline/slice';
+import { AnchorPoint, CurveTrack, Point } from '@/redux/timeline/types';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { IconButton } from '@mui/material';
+import React, { useLayoutEffect, useRef, useState } from 'react';
+import styles from 'styles/components/timeline/track.module.scss';
 
-import { findTForX, cubicBezier } from "../../../../utils/bezier-helper"
-import { TrackProps } from ".."
-
-import styles from "styles/components/timeline/track.module.scss"
+import { TrackProps } from '..';
+import { cubicBezier, findTForX } from '../../../../utils/bezier-helper';
 
 enum DragPointType {
   ANCHOR,
@@ -249,29 +248,72 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
     setDragInfo({ ...emptyDragInfo })
   }
 
+  /**
+   * Create an SVG path from a list of normalized anchors and control points, and the size
+   * of the area to draw it in.
+   * @param points Array of AnchorPoint objects
+   * @param width Destination area width
+   * @param height Destination area height
+   * @returns String representation of the corresponding SVG path
+   */
   const createPath = (points: AnchorPoint[], width: number, height: number): string => {
 
-    const calcPos = (p: Point, isDragTarget: boolean = false): Point => ({
-      x: p.x * width + (isDragTarget ? dragInfo.offsetX : 0),
-      y: (1.0 - p.y) * height + (isDragTarget ? dragInfo.offsetY : 0),
+    // turn normalized positions into concrete coordinates
+    const calcPos = (p: Point): Point => ({
+      x: p.x * width,
+      y: (1.0 - p.y) * height,
     })
 
-   return points.reduce((path, {point, control_1, control_2}, i, arr) => {
-      const p = calcPos(point, dragInfo.index == i && dragInfo.type === DragPointType.ANCHOR)
-      const cc = calcPos(control_1, dragInfo.index === i && dragInfo.type === DragPointType.CONTROL_1)
+    // Work out the full path in sections between two points, via their respective control points
+    return points.reduce((path, {point, control_1, control_2}, i, arr) => {
+      const p = calcPos(point)
+      const cc = calcPos(control_1)
 
       if (i === 0) {
         return `M${p.x},${p.y}`
       }
 
       const prev = arr[i - 1]
-      const pc = calcPos(prev.control_2, dragInfo.index === i - 1 && dragInfo.type === DragPointType.CONTROL_2)
+      const pc = calcPos(prev.control_2)
 
       return path + ` C${pc.x},${pc.y} ${cc.x},${cc.y} ${p.x},${p.y}`
     }, '')
   }
 
-  const playY = calculateValue(curve, playPosition)
+  // Define the current curve by applying any offsets that are the result of dragging anchor or control points
+  const currentCurve = dragInfo.index < 0
+    ? curve
+    : curve.map((v, i) => {
+      if (i === dragInfo.index) {
+        const { point, control_1, control_2 } = v
+        const offset = {
+          x: dragInfo.offsetX / width,
+          y: dragInfo.offsetY / height
+        }
+        if (dragInfo.type === DragPointType.ANCHOR) {
+          return {
+            point: { x: point.x + offset.x, y: point.y - offset.y },
+            control_1: { x: control_1.x + offset.x, y: control_1.y - offset.y },
+            control_2: { x: control_2.x + offset.x, y: control_2.y - offset.y },
+          }
+        } else {
+          return {
+            point,
+            control_1: dragInfo.type === DragPointType.CONTROL_1
+              ? { x: control_1.x + offset.x, y: control_1.y - offset.y }
+              : control_1,
+            control_2: dragInfo.type === DragPointType.CONTROL_2
+              ? { x: control_2.x + offset.x, y: control_2.y - offset.y }
+              : control_2,
+          }
+        }
+      } else {
+        return v
+      }
+    }
+  )
+
+  const playY = calculateValue(currentCurve, playPosition)
 
   return (
     <div
@@ -316,21 +358,20 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
               fill="none"
               stroke="#1976D2"
               strokeWidth="1"
-              d={createPath(curve, width * scale, height)}
+              d={createPath(currentCurve, width * scale, height)}
             />
-            { curve.map(({ point, control_1, control_2 }, i, arr) => {
-              const isDragging = dragInfo.index == i;
+            { currentCurve.map(({ point, control_1, control_2 }, i, arr) => {
               const p = {
-                x: point.x * width * scale + (isDragging && dragInfo.type === DragPointType.ANCHOR ? dragInfo.offsetX : 0),
-                y: (1.0 - point.y) * height + (isDragging && dragInfo.type === DragPointType.ANCHOR ? dragInfo.offsetY : 0)
+                x: point.x * width * scale,
+                y: (1.0 - point.y) * height,
               }
               const c1 = {
-                x: control_1.x * width * scale + (isDragging && dragInfo.type === DragPointType.CONTROL_1 ? dragInfo.offsetX : 0),
-                y: (1.0 - control_1.y) * height + (isDragging && dragInfo.type === DragPointType.CONTROL_1? dragInfo.offsetY : 0)
+                x: control_1.x * width * scale,
+                y: (1.0 - control_1.y) * height,
               }
               const c2 = {
-                x: control_2.x * width * scale + (isDragging && dragInfo.type === DragPointType.CONTROL_2 ? dragInfo.offsetX : 0),
-                y: (1.0 - control_2.y) * height + (isDragging && dragInfo.type === DragPointType.CONTROL_2 ? dragInfo.offsetY : 0)
+                x: control_2.x * width * scale,
+                y: (1.0 - control_2.y) * height,
               }
               return (
                 <React.Fragment key={i}>
@@ -369,8 +410,8 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
           <div
             className={ styles.pointTooltip }
             style={{
-              left: `${bounds.x + curve[selectedPointIndex].point.x * width * scale - 18}px`,
-              top: `${bounds.y + (1.0 - curve[selectedPointIndex].point.y) * height - 40}px`
+              left: `${bounds.x + currentCurve[selectedPointIndex].point.x * width * scale - 18}px`,
+              top: `${bounds.y + (1.0 - currentCurve[selectedPointIndex].point.y) * height - 40}px`
             }}
           >
             <IconButton size="small" onClick={deletePoint}>
