@@ -1,0 +1,51 @@
+{
+  "name": "tether-timeline-ui",
+  "productName": "Tether Timeline UI",
+  "private": true,
+  "version": "1.1.0",
+  "description": "UI for Tether-enabled timeline editor",
+  "author": "Ralph Kok",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@fontsource/roboto": "^4.5.8",
+    "@msgpack/msgpack": "^2.8.0",
+    "@mui/icons-material": "^5.14.8",
+    "@mui/material": "^5.14.8",
+    "@randomstudio/tether": "^2.7.1",
+    "@reduxjs/toolkit": "^1.9.5",
+    "@rollup/plugin-inject": "^5.0.3",
+    "buffer": "^6.0.3",
+    "offscreen-canvas": "^0.1.1",
+    "process": "^0.11.10",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-redux": "^8.1.2",
+    "redux": "^4.2.1",
+    "redux-persist": "^6.0.0"
+  },
+  "devDependencies": {
+    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
+    "@redux-devtools/core": "^3.13.1",
+    "@types/node": "^18.17.15",
+    "@types/offscreencanvas": "^2019.7.1",
+    "@types/react": "^18.2.21",
+    "@types/react-dom": "^18.2.7",
+    "@typescript-eslint/eslint-plugin": "^6.7.0",
+    "@typescript-eslint/parser": "^6.7.0",
+    "@vitejs/plugin-react-swc": "^3.3.2",
+    "eslint": "^8.49.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "sass": "^1.66.1",
+    "typescript": "^5.2.2",
+    "vite": "^4.4.9"
+  }
+}
