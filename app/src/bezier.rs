@@ -1,17 +1,19 @@
-#[derive(Copy, Clone, Debug)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Point2D {
     pub x: f64,
     pub y: f64,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct AnchorPoint {
     pub anchor: Point2D,
     pub control_1: Point2D,
     pub control_2: Point2D,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BezierCurve {
     pub points: Vec<AnchorPoint>,
 }

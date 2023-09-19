@@ -1,27 +1,11 @@
-import { combineReducers, configureStore } from "@reduxjs/toolkit"
-import timelineReducer from "./timeline/slice"
-import storage from "redux-persist/lib/storage"
-import { persistReducer, persistStore } from "redux-persist"
-import thunk from "redux-thunk"
+import { configureStore } from '@reduxjs/toolkit';
 
-const rootReducer = combineReducers({
-  timeline: persistReducer({
-    key: 'timeline',
-    storage,
-    // blacklist: []
-  }, timelineReducer),
-})
-
-const persistedReducer = persistReducer({
-  key: 'root',
-  storage,
-}, rootReducer)
+import timelineReducer from './timeline/slice';
 
 export const store = configureStore({
-  reducer: persistedReducer,
+  reducer: timelineReducer,
   devTools: process.env.NODE_ENV !== 'production',
-  middleware: [ thunk ]
+  // middleware: [ thunk ]
 })
 
 export type RootState = ReturnType<typeof store.getState>
-export const persistor = persistStore(store)

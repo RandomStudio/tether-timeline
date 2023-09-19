@@ -4,53 +4,64 @@ export interface Point {
 }
 
 export interface AnchorPoint {
-  point: Point
+  anchor: Point
   control_1: Point
   control_2: Point
 }
 
-export type TrackType = "curve" | "video"
+export interface EventTrigger {
+	position: number
+	data: string
+}
 
 export interface Track {
-  type: TrackType
-  id: string
   name: string
-}
-
-export interface CurveTrack extends Track {
-  type: "curve"
-  curve: AnchorPoint[]
-}
-
-export interface SampleLocation {
-  name: string
-  x: number
-  y: number
-  w: number
-  h: number
-  sx: number // horizontal spacing between samples, used when w > 1
-  sy: number // vertical spacing between samples, used when h > 1
-}
-
-export interface VideoTrack extends Track {
-  type: "video"
-  video: {
-    file: string | null
-    loop: boolean
-  }
-  sampleLocations: SampleLocation[]
-  currentValues: number[][] // each sample location can contain multiple pixels
+	curve: AnchorPoint[]
+	events: Array<EventTrigger>
 }
 
 export interface Timeline {
-  id: string
   name: string
   duration: number
-  loop: boolean
-  tracks: Track[]
+	fps: number,
+  loopPlayback: boolean
+  tracks: Track[],
+	position: number,
+	isPlaying: boolean,
 }
 
 export interface TimelineState {
   timelines: Timeline[]
-  selectedTimelineId: string
+  selectedTimeline: string | null
+}
+
+export interface EventSnapshot {
+	// timeline name
+	timeline: string,
+	// track name
+	track: string,
+	// event data
+	event: string,
+}
+
+export interface TrackSnapshot {
+	// track name
+	name: string,
+	// curve value at snapshot position, if any
+	value?: number,
+	// events at snapshot position, if any
+	events: Array<string>,
+}
+
+export interface TimelineSnapshot {
+	// timeline name
+	name: String,
+	// time at snapshot
+	time: number,
+	// normalized playhead position at snapshot
+	position: number,
+	// whether or not the timeline is currently playing
+	isPlaying: boolean,
+	// track snapshots at snapshot time
+	tracks: Array<TrackSnapshot>,
 }

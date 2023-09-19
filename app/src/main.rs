@@ -1,22 +1,26 @@
-use bezier::Point2D;
 use clap::Parser;
 use lazy_static::lazy_static;
 use log::*;
+use serde::{Serialize, Serializer};
 use server::start_server;
 use std::{
     env::{set_var, var},
     error::Error,
     panic::catch_unwind,
-    sync::mpsc::{self, TryRecvError},
+    sync::{
+        mpsc::{self, SyncSender, TryRecvError},
+        Arc, Mutex,
+    },
     thread,
-    time::SystemTime,
 };
+use tether::StatusMessage;
 
+use crate::model::Model;
 use crate::signal_handler::handle_exit_signals;
 use crate::tether::{ControlMessage, Tether};
-use crate::timeline::Timeline;
 
 mod bezier;
+mod model;
 mod server;
 mod signal_handler;
 mod tether;
@@ -52,6 +56,21 @@ lazy_static! {
     static ref ARGS: Args = Args::parse();
 }
 
+/// Wrapper just for the sake of allowing a Mutex to be serialized
+pub struct MutexWrapper<T: ?Sized>(pub Mutex<T>);
+
+impl<T: ?Sized + Serialize> Serialize for MutexWrapper<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0
+            .lock()
+            .expect("mutex is poisoned")
+            .serialize(serializer)
+    }
+}
+
 fn init_logging(level: u8) {
     // if RUST_BACKTRACE is set, ignore the arg given and set `trace` no matter what
     let mut overridden = false;
@@ -83,7 +102,19 @@ fn init_logging(level: u8) {
     );
 }
 
-fn run() {
+fn publish_state(tx: &SyncSender<StatusMessage>, model: &Arc<MutexWrapper<Model>>) {
+    match tx.send(tether::StatusMessage::State(model.clone())) {
+        Ok(()) => (),
+        Err(err) => {
+            error!(
+                "Could not send updated model state to internal tether agent. {}",
+                err
+            );
+        }
+    }
+}
+
+fn run(model: &Arc<MutexWrapper<Model>>) {
     thread::spawn(move || start_server(ARGS.http_port));
     info!("Started server on port {}", ARGS.http_port);
 
@@ -91,27 +122,12 @@ fn run() {
     let (tx_sig, rx_sig) = mpsc::sync_channel(1);
     handle_exit_signals(tx_sig).expect("Cannot handle exit signals");
 
-    let mut timelines = vec![Timeline::new("Timeline 1", 10.0, ARGS.fps, true)];
-    if let Some(t) = timelines.first_mut() {
-        t.add_track("Track 1");
-        if let Some(track) = t.get_track_mut("Track 1") {
-            track.curve.add_anchor_point(
-                Point2D { x: 0.0, y: 0.0 },
-                Point2D { x: 0.0, y: 0.0 },
-                Point2D { x: 1.0, y: 0.0 },
-            );
-            track.curve.add_anchor_point(
-                Point2D { x: 1.0, y: 1.0 },
-                Point2D { x: 0.0, y: 1.0 },
-                Point2D { x: 1.0, y: 1.0 },
-            );
-        }
-        t.play()
-    }
-
     let (tx_control, rx_control) = mpsc::sync_channel(1);
     let (tx_status, rx_status) = mpsc::sync_channel(1);
     let tether = Tether::new(tx_control, rx_status);
+    publish_state(&tx_status, model);
+
+    thread::spawn(move || tether.start());
 
     loop {
         // Listen for exit signals
@@ -120,19 +136,39 @@ fn run() {
             panic!("Received exit signal");
         }
 
-        tether.update();
+        let mut m = model.0.lock().unwrap();
 
-        // check for incoming data from tether
+        // keep track of any model changes, to determine if updated state data needs to be published
+        let mut anything_changed = false;
+
+        // check for incoming data from tether, such as play/stop/seek requests
         match rx_control.try_recv() {
+            Ok(ControlMessage::Update(timelines)) => {
+                m.update_timeline_data(timelines);
+                anything_changed = true;
+            }
             Ok(ControlMessage::Play(name)) => {
-                // start playback on timeline with specified name
-                if let Some(timeline) = timelines.iter_mut().find(|t| t.name.eq(&name)) {
-                    timeline.play();
+                // select the specified timeline and start playback on it
+                m.set_active_timeline(name.as_str());
+                if let Some(timeline) = m.get_active_timeline_mut() {
+                    if timeline.name.eq(name.as_str()) {
+                        timeline.play();
+                        anything_changed = true;
+                    }
                 }
             }
             Ok(ControlMessage::Stop) => {
-                // stop playback on all timelines
-                timelines.iter_mut().for_each(|t| t.stop());
+                // stop playback on current timeline
+                if let Some(timeline) = m.get_active_timeline_mut() {
+                    timeline.stop();
+                    // anything_changed = true;
+                }
+            }
+            Ok(ControlMessage::Seek(name, position)) => {
+                if let Some(timeline) = m.get_timeline_mut(name.as_str()) {
+                    timeline.seek(position);
+                    // anything_changed = true;
+                }
             }
             Err(TryRecvError::Empty) => (),
             Err(TryRecvError::Disconnected) => {
@@ -141,19 +177,22 @@ fn run() {
         }
 
         // update playing timeline, if any, and send out status messages over tether
-        if let Some(timeline) = timelines.iter_mut().find(|t| t.is_playing()) {
-            if let Some(snapshot) = timeline.update() {
-                debug!("Timeline state: {:?}", snapshot);
-                match tx_status.send(tether::StatusMessage::Update(snapshot)) {
-                    Ok(()) => (),
-                    Err(err) => {
-                        error!(
-                            "Could not send status message to internal tether agent. {}",
-                            err
-                        )
-                    }
+        if let Some(snapshot) = m.update() {
+            debug!("Timeline state: {:?}", snapshot);
+            match tx_status.send(tether::StatusMessage::Update(snapshot)) {
+                Ok(()) => (),
+                Err(err) => {
+                    error!(
+                        "Could not send status message to internal tether agent. {}",
+                        err
+                    )
                 }
             }
+        }
+
+        // publish the current model state
+        if anything_changed {
+            publish_state(&tx_status, model);
         }
     }
 }
@@ -161,15 +200,17 @@ fn run() {
 fn main() -> Result<(), Box<dyn Error>> {
     init_logging(ARGS.verbosity);
 
-    match catch_unwind(|| run()) {
+    let model: Arc<MutexWrapper<Model>> = Arc::new(MutexWrapper(Mutex::new(Model::new())));
+
+    match catch_unwind(|| run(&model)) {
         Ok(_) => println!("Exited successfully"),
         Err(_) => {
             println!("Application panicked");
-            // let mut model = match model.0.lock() {
-            // 		Ok(guard) => guard,
-            // 		Err(poisoned) => poisoned.into_inner(),
-            // };
-            // model.clean_up();
+            let mut model = match model.0.lock() {
+                Ok(guard) => guard,
+                Err(poisoned) => poisoned.into_inner(),
+            };
+            model.clean_up();
         }
     }
 

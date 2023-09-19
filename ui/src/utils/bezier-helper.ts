@@ -103,7 +103,6 @@ export const findTForX = (p1: number, c1: number, c2: number, p2: number, target
   let lower = 0, upper = 1
   let mid = lower + 0.5 * (upper - lower)
   let x = b(mid)
-  let i = 0;
   while (Math.abs(targetX - x) > precision) {
     if (targetX > x) {
       lower = mid

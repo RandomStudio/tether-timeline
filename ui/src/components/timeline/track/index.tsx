@@ -1,13 +1,10 @@
-import React, { useLayoutEffect, useRef, useState } from "react"
-import { store } from "@/redux/store"
-import { removeTrack, setTrackType } from "@/redux/timeline/slice"
-import { CurveTrack, Track, VideoTrack } from "@/redux/timeline/types"
-import { Button, MenuItem, Select } from "@mui/material"
-import DeleteIcon from '@mui/icons-material/Delete'
-import CurveEditor from "./editors/curve"
-import VideoEditor from "./editors/video"
-
-import styles from "styles/components/timeline/track.module.scss"
+import { store } from '@/redux/store';
+import { removeTrack } from '@/redux/timeline/slice';
+import { Track } from '@/redux/timeline/types';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { Button } from '@mui/material';
+import React, { useLayoutEffect, useRef, useState } from 'react';
+import styles from 'styles/components/timeline/track.module.scss';
 
 export interface TrackProps {
   playPosition: number
@@ -21,18 +18,18 @@ export interface TrackProps {
 
 const TrackComponent: React.FC<TrackProps> = ({
   width,
-  height,
+  // height,
   scale,
-  duration,
-  pxPerSecond,
-  playPosition,
+  // duration,
+  // pxPerSecond,
+  // playPosition,
   track,
 }) => {
-  const { type, id, name } = track
+  const { name } = track
 
   const ref = useRef(null)
 
-  const [ bounds, setBounds ] = useState({ x: 0})
+  const [ _bounds, setBounds ] = useState({ x: 0})
 
   useLayoutEffect(() => {
     if (ref.current) {
@@ -45,11 +42,7 @@ const TrackComponent: React.FC<TrackProps> = ({
   }, []);
 
   const deleteTrack = () => {
-    store.dispatch(removeTrack(id))
-  }
-
-  const onChangeTrackType = (value: string) => {
-    store.dispatch(setTrackType({ id, type: value }))
+    store.dispatch(removeTrack(name))
   }
 
   return (
@@ -64,33 +57,16 @@ const TrackComponent: React.FC<TrackProps> = ({
         </Button>
         <p className={ styles.name }>{ name }</p>
         <div className={ styles.spacer } />
-        <Select size="small" variant="outlined" value={type} onChange={e => onChangeTrackType(e.target.value)}>
-          <MenuItem value="curve">Curve</MenuItem>
-          <MenuItem value="video">Video</MenuItem>
-        </Select>
       </div>
-      { type === "curve" && (
-        <CurveEditor
+        {/* <CurveEditor
           width={width}
           height={height}
           scale={scale}
           duration={duration}
           pxPerSecond={pxPerSecond}
           playPosition={playPosition}
-          track={track as CurveTrack}
-        />
-      )}
-      { type === "video" && (
-        <VideoEditor
-          width={width}
-          height={height}
-          scale={scale}
-          duration={duration}
-          pxPerSecond={pxPerSecond}
-          playPosition={playPosition}
-          track={track as VideoTrack}
-        />
-      )}
+          track={track}
+        /> */}
     </div>
   )
 }

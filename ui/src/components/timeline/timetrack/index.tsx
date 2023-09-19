@@ -1,7 +1,5 @@
-import { style } from "@mui/system"
-import React, { useLayoutEffect, useRef, useState } from "react"
-
-import styles from "styles/components/timeline/timetrack.module.scss"
+import React, { useLayoutEffect, useRef, useState } from 'react';
+import styles from 'styles/components/timeline/timetrack.module.scss';
 
 export interface TimeTrackProps {
   width: number
@@ -47,7 +45,7 @@ const TimeTrack: React.FC<TimeTrackProps> = ({
     select((clientX + scrollLeft - x) / (width * scale))
   }
 
-  const release = (event: MouseEvent) => {
+  const release = (_event: MouseEvent) => {
     window.onmousemove = null
     window.onmouseup = window.onmouseleave = null
   }
@@ -58,15 +56,15 @@ const TimeTrack: React.FC<TimeTrackProps> = ({
 
   const generateTimecodeLabels = () => {
     if (scale > 0.6) {
-      return new Array(duration).fill(0).map((v, i) => (
+      return new Array(duration).fill(0).map((_v, i) => (
         createTimecodeElement(i + 1)
       ))
     } else if (scale > 0.25) {
-      return new Array(Math.ceil(duration / 2)).fill(0).map((v, i) => (
+      return new Array(Math.ceil(duration / 2)).fill(0).map((_v, i) => (
         createTimecodeElement(i * 2 + 1)
       ))
     } else {
-      return new Array(duration / 5).fill(0).map((v, i) => (
+      return new Array(duration / 5).fill(0).map((_v, i) => (
         createTimecodeElement(i * 5 + 5)
       ))
     }

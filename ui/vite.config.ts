@@ -1,4 +1,4 @@
-// import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
+import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
 import inject from '@rollup/plugin-inject';
 import react from '@vitejs/plugin-react-swc';
 import { Buffer } from 'buffer';
@@ -28,11 +28,11 @@ export default defineConfig({
         global: 'globalThis'
       },
       // Enable esbuild polyfill plugins
-      // plugins: [
-      //   NodeGlobalsPolyfillPlugin({
-      //     buffer: true
-      //   })
-      // ]
+      plugins: [
+        NodeGlobalsPolyfillPlugin({
+          buffer: true
+        })
+      ]
     }
   },
   build: {

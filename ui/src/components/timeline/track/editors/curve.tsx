@@ -1,6 +1,6 @@
 import { store } from '@/redux/store';
 import { updateCurve } from '@/redux/timeline/slice';
-import { AnchorPoint, CurveTrack, Point } from '@/redux/timeline/types';
+import { AnchorPoint, Point, Track } from '@/redux/timeline/types';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { IconButton } from '@mui/material';
 import React, { useLayoutEffect, useRef, useState } from 'react';
@@ -55,16 +55,16 @@ const lerpPoint = (a: Point, b: Point, factor: number): Point => ({
 })
 
 const getPointBefore = (curve: AnchorPoint[], position: number): AnchorPoint => {
-  const allBefore: AnchorPoint[] = curve.filter(p => p.point.x < position)
+  const allBefore: AnchorPoint[] = curve.filter(p => p.anchor.x < position)
   return allBefore.length
-    ? allBefore.sort((a, b) => a.point.x - b.point.x).pop()!
+    ? allBefore.sort((a, b) => a.anchor.x - b.anchor.x).pop()!
     : curve[0]
 }
 
 const getPointAfter = (curve: AnchorPoint[], position: number): AnchorPoint => {
-  const allBefore: AnchorPoint[] = curve.filter(p => p.point.x > position)
+  const allBefore: AnchorPoint[] = curve.filter(p => p.anchor.x > position)
   return allBefore.length
-    ? allBefore.sort((a, b) => a.point.x - b.point.x).shift()!
+    ? allBefore.sort((a, b) => a.anchor.x - b.anchor.x).shift()!
     : curve[curve.length - 1]
 }
 
@@ -72,22 +72,21 @@ export const calculateValue = (curve: AnchorPoint[], position: number) => {
   const prev = getPointBefore(curve, position)
   const next = getPointAfter(curve, position)
   // const t = (position - prev.point.x) / (next.point.x - prev.point.x)
-  const t = findTForX(prev.point.x, prev.control_2.x, next.control_1.x, next.point.x, position, 0.0001)
-  return cubicBezier(prev.point, prev.control_2, next.control_1, next.point, t).y
+  const t = findTForX(prev.anchor.x, prev.control_2.x, next.control_1.x, next.anchor.x, position, 0.0001)
+  return cubicBezier(prev.anchor, prev.control_2, next.control_1, next.anchor, t).y
 }
 
 interface CurveEditorProps extends TrackProps {
-  track: CurveTrack
+  track: Track
 }
 
 const CurveEditor: React.FC<CurveEditorProps> = ({
   width,
   height,
   scale,
-  duration,
   pxPerSecond,
   playPosition,
-  track: { id, name, curve },
+  track: { name, curve },
 }) => {
   const ref = useRef(null)
 
@@ -109,13 +108,13 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
   const deletePoint = () => {
     if (selectedPointIndex == -1) return
     store.dispatch(updateCurve({
-      trackId: id,
-      curve: curve.filter((p, i) => i !== selectedPointIndex)
+      track: name,
+      curve: curve.filter((_p, i) => i !== selectedPointIndex)
     }))
     setSelectedPointIndex(-1)
   }
 
-  const onSingleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+  const onSingleClick = (_event: React.MouseEvent<HTMLDivElement>) => {
     setSelectedPointIndex(-1)
   }
 
@@ -129,46 +128,46 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
     let xy = { x: position, y: 0.5 }
 
     if (lastBefore && firstAfter) {
-      xy = lerpPoint(lastBefore.point, firstAfter.point, (position - lastBefore.point.x) / (firstAfter.point.x - lastBefore.point.x))
+      xy = lerpPoint(lastBefore.anchor, firstAfter.anchor, (position - lastBefore.anchor.x) / (firstAfter.anchor.x - lastBefore.anchor.x))
     } else if (!lastBefore && firstAfter) {
-      xy.y = firstAfter.point.y
+      xy.y = firstAfter.anchor.y
     } else if (lastBefore && !firstAfter) {
-      xy.y = lastBefore.point.y
+      xy.y = lastBefore.anchor.y
     }
 
     let c1 = {
-      x: Math.max(lastBefore ? lastBefore.point.x : 0, position - 0.125),
+      x: Math.max(lastBefore ? lastBefore.anchor.x : 0, position - 0.125),
       y: xy.y
     }
     let c2 = {
-      x: Math.min(firstAfter ? firstAfter.point.x : 1, position + 0.125),
+      x: Math.min(firstAfter ? firstAfter.anchor.x : 1, position + 0.125),
       y: xy.y
     }
 
     store.dispatch(updateCurve({
-      trackId: id,
+      track: name,
       curve: [
         ...curve,
-        { point: xy, control_1: c1, control_2: c2 }
-      ].sort((a, b) => a.point.x - b.point.x)
+        { anchor: xy, control_1: c1, control_2: c2 }
+      ].sort((a, b) => a.anchor.x - b.anchor.x)
     }))
   }
 
   const onGrabPoint = (event: React.MouseEvent<SVGCircleElement>, index: number, type: DragPointType) => {
     setSelectedPointIndex(index)
-    const { point, control_1, control_2 } = curve[index]
-    const prev = getPointBefore(curve, point.x)
-    const next = getPointAfter(curve, point.x)
+    const { anchor, control_1, control_2 } = curve[index]
+    const prev = getPointBefore(curve, anchor.x)
+    const next = getPointAfter(curve, anchor.x)
     const minOffsetX = type === DragPointType.ANCHOR
-      ? (prev.point.x - point.x) * width * scale
+      ? (prev.anchor.x - anchor.x) * width * scale
       : type === DragPointType.CONTROL_1
-        ? (prev.point.x - control_1.x) * width * scale
-        : (point.x - control_2.x) * width * scale
+        ? (prev.anchor.x - control_1.x) * width * scale
+        : (anchor.x - control_2.x) * width * scale
     const maxOffsetX = type === DragPointType.ANCHOR
-      ? (next.point.x - point.x) * width * scale
+      ? (next.anchor.x - anchor.x) * width * scale
       : type === DragPointType.CONTROL_1
-        ? (point.x - control_1.x) * width * scale
-        : (next.point.x - control_2.x) * width * scale
+        ? (anchor.x - control_1.x) * width * scale
+        : (next.anchor.x - control_2.x) * width * scale
     setDragInfo({
       index,
       startX: event.pageX,
@@ -201,30 +200,30 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
     }
   }
 
-  const onRelease = (event: React.MouseEvent<HTMLDivElement>) => {
+  const onRelease = (_event: React.MouseEvent<HTMLDivElement>) => {
     const {index, prevPoint, nextPoint, offsetX, offsetY, type } = dragInfo;
     store.dispatch(updateCurve({
-      trackId: id,
-      curve: curve.map(({ point, control_1, control_2 }, i) => {
+      track: name,
+      curve: curve.map(({ anchor, control_1, control_2 }, i) => {
         if (i === index) {
           const p = type === DragPointType.ANCHOR
             ? {
               x: clamp(
-                point.x + (offsetX / (width * scale)),
-                prevPoint?.point.x || 0,
-                nextPoint?.point.x || 1
+                anchor.x + (offsetX / (width * scale)),
+                prevPoint?.anchor.x || 0,
+                nextPoint?.anchor.x || 1
               ),
-              y: point.y - (offsetY / height)
+              y: anchor.y - (offsetY / height)
             }
-            : point
+            : anchor
           const c1 = type === DragPointType.CONTROL_1
             ? {
               x: control_1.x + (offsetX / (width * scale)),
               y: control_1.y - (offsetY / height)
             }
             : {
-              x: p.x + (control_1.x - point.x),
-              y: p.y + (control_1.y - point.y),
+              x: p.x + (control_1.x - anchor.x),
+              y: p.y + (control_1.y - anchor.y),
             }
           const c2 = type === DragPointType.CONTROL_2
             ? {
@@ -232,16 +231,16 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
               y: control_2.y - (offsetY / height)
             }
             : {
-              x: p.x + (control_2.x - point.x),
-              y: p.y + (control_2.y - point.y),
+              x: p.x + (control_2.x - anchor.x),
+              y: p.y + (control_2.y - anchor.y),
             }
           return {
-            point: p,
+            anchor: p,
             control_1: c1,
             control_2: c2
           }
         } else {
-          return { point, control_1, control_2 }
+          return { anchor, control_1, control_2 }
         }
       })
     }))
@@ -265,8 +264,8 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
     })
 
     // Work out the full path in sections between two points, via their respective control points
-    return points.reduce((path, {point, control_1, control_2}, i, arr) => {
-      const p = calcPos(point)
+    return points.reduce((path, { anchor, control_1 }, i, arr) => {
+      const p = calcPos(anchor)
       const cc = calcPos(control_1)
 
       if (i === 0) {
@@ -285,20 +284,20 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
     ? curve
     : curve.map((v, i) => {
       if (i === dragInfo.index) {
-        const { point, control_1, control_2 } = v
+        const { anchor, control_1, control_2 } = v
         const offset = {
           x: dragInfo.offsetX / width,
           y: dragInfo.offsetY / height
         }
         if (dragInfo.type === DragPointType.ANCHOR) {
           return {
-            point: { x: point.x + offset.x, y: point.y - offset.y },
+            anchor: { x: anchor.x + offset.x, y: anchor.y - offset.y },
             control_1: { x: control_1.x + offset.x, y: control_1.y - offset.y },
             control_2: { x: control_2.x + offset.x, y: control_2.y - offset.y },
           }
         } else {
           return {
-            point,
+            anchor,
             control_1: dragInfo.type === DragPointType.CONTROL_1
               ? { x: control_1.x + offset.x, y: control_1.y - offset.y }
               : control_1,
@@ -360,10 +359,10 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
               strokeWidth="1"
               d={createPath(currentCurve, width * scale, height)}
             />
-            { currentCurve.map(({ point, control_1, control_2 }, i, arr) => {
+            { currentCurve.map(({ anchor, control_1, control_2 }, i, _arr) => {
               const p = {
-                x: point.x * width * scale,
-                y: (1.0 - point.y) * height,
+                x: anchor.x * width * scale,
+                y: (1.0 - anchor.y) * height,
               }
               const c1 = {
                 x: control_1.x * width * scale,
@@ -410,8 +409,8 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
           <div
             className={ styles.pointTooltip }
             style={{
-              left: `${bounds.x + currentCurve[selectedPointIndex].point.x * width * scale - 18}px`,
-              top: `${bounds.y + (1.0 - currentCurve[selectedPointIndex].point.y) * height - 40}px`
+              left: `${bounds.x + currentCurve[selectedPointIndex].anchor.x * width * scale - 18}px`,
+              top: `${bounds.y + (1.0 - currentCurve[selectedPointIndex].anchor.y) * height - 40}px`
             }}
           >
             <IconButton size="small" onClick={deletePoint}>
