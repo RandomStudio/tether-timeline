@@ -149,7 +149,7 @@ class TimelineComponent extends React.Component<TimelineProps, TimelineState> {
   }
 
   render() {
-    const { timeline: { duration, loopPlayback, tracks, position, isPlaying } } = this.props
+    const { timeline: { duration, loopPlayback, tracks, position, isPlaying }, onChange } = this.props
     const { largeTrackHeight, scale, settingDuration } = this.state
     return (
       <div className={ styles.timeline }>
@@ -211,6 +211,7 @@ class TimelineComponent extends React.Component<TimelineProps, TimelineState> {
                 pxPerSecond={PX_PER_SECOND}
                 playPosition={position}
                 track={track}
+								onSave={onChange}
               />
             ))}
           </div>

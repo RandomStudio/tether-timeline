@@ -5,7 +5,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::bezier::BezierCurve;
+use crate::bezier::{BezierCurve, Curve, Point2D};
 
 pub type Result<T> = std::result::Result<T, InvalidDataError>;
 
@@ -72,15 +72,25 @@ pub struct TrackSnapshot {
 
 impl Track {
     pub fn new(name: &str) -> Self {
-        Self {
+        let mut s = Self {
             name: String::from(name),
             curve: BezierCurve::new(),
             events: Vec::new(),
-        }
+        };
+        s.curve.add_anchor_point(
+            Point2D { x: 0.0, y: 0.5 },
+            Point2D { x: 0.0, y: 0.5 },
+            Point2D { x: 0.2, y: 0.5 },
+        );
+        s.curve.add_anchor_point(
+            Point2D { x: 1.0, y: 0.5 },
+            Point2D { x: 0.8, y: 0.5 },
+            Point2D { x: 1.0, y: 0.5 },
+        );
+        s
     }
 
     pub fn set_name(&mut self, name: &str) {
-        // TODO validate name as being unique
         self.name = String::from(name);
     }
 

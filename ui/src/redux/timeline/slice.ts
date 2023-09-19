@@ -16,11 +16,13 @@ interface AddTrackPayload {
 }
 
 interface RenameTrackPayload {
+	timeline: string
   oldName: string
   newName: string
 }
 
 interface UpdateCurvePayload {
+	timeline: string
   track: string
   curve: AnchorPoint[]
 }
@@ -52,11 +54,8 @@ const getNewTimeline = (name: string): Timeline => ({
 	isPlaying: false,
 })
 
-export const findTrack = (state: TimelineState, name: string): Track | undefined => (
-  state.timelines.reduce((l: Track[], tl: Timeline) => [
-    ...l,
-    ...tl.tracks
-  ], []).find(t => t.name === name)
+export const findTrack = (state: TimelineState, timeline: string, name: string): Track | undefined => (
+	state.timelines.find(tl => tl.name === timeline)?.tracks.find(t => t.name === name)
 )
 
 const timelineEditorSlice = createSlice({
@@ -177,14 +176,14 @@ const timelineEditorSlice = createSlice({
       }))
     },
     renameTrack(state, action: PayloadAction<RenameTrackPayload>) {
-      const track = findTrack(state, action.payload.oldName)
+      const track = findTrack(state, action.payload.timeline, action.payload.oldName)
 
       if (track) {
         track.name = action.payload.newName
       }
     },
     updateCurve(state, action: PayloadAction<UpdateCurvePayload>) {
-      const track = findTrack(state, action.payload.track)
+      const track = findTrack(state, action.payload.timeline, action.payload.track)
 
       if (track) {
         track.curve = action.payload.curve.map(({ anchor, control_1, control_2 }) => ({

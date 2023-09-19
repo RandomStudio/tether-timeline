@@ -6,6 +6,8 @@ import { Button } from '@mui/material';
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import styles from 'styles/components/timeline/track.module.scss';
 
+import CurveEditor from './editors/curve';
+
 export interface TrackProps {
   playPosition: number
   width: number
@@ -14,16 +16,18 @@ export interface TrackProps {
   duration: number
   pxPerSecond: number
   track: Track
+	onSave: () => void
 }
 
 const TrackComponent: React.FC<TrackProps> = ({
   width,
-  // height,
+  height,
   scale,
-  // duration,
-  // pxPerSecond,
-  // playPosition,
+  duration,
+  pxPerSecond,
+  playPosition,
   track,
+	onSave,
 }) => {
   const { name } = track
 
@@ -58,7 +62,7 @@ const TrackComponent: React.FC<TrackProps> = ({
         <p className={ styles.name }>{ name }</p>
         <div className={ styles.spacer } />
       </div>
-        {/* <CurveEditor
+        <CurveEditor
           width={width}
           height={height}
           scale={scale}
@@ -66,7 +70,8 @@ const TrackComponent: React.FC<TrackProps> = ({
           pxPerSecond={pxPerSecond}
           playPosition={playPosition}
           track={track}
-        /> */}
+					onSave={onSave}
+        />
     </div>
   )
 }

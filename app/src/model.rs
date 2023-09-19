@@ -2,7 +2,7 @@ use log::info;
 use serde::Serialize;
 
 use crate::{
-    bezier::Point2D,
+    bezier::{Curve, Point2D},
     timeline::{InvalidDataError, Result, Timeline, TimelineSnapshot},
     ARGS,
 };
@@ -19,16 +19,6 @@ impl Model {
         let name = String::from("Timeline 1");
         let mut t = Timeline::new(&name, 10.0, ARGS.fps, true);
         if let Ok(track) = t.add_track("Track 1") {
-            track.curve.add_anchor_point(
-                Point2D { x: 0.0, y: 0.0 },
-                Point2D { x: 0.0, y: 0.0 },
-                Point2D { x: 1.0, y: 0.0 },
-            );
-            track.curve.add_anchor_point(
-                Point2D { x: 1.0, y: 1.0 },
-                Point2D { x: 0.0, y: 1.0 },
-                Point2D { x: 1.0, y: 1.0 },
-            );
             track.add_event(0.0, String::from("Start"));
             (1..10).step_by(1).for_each(|i| {
                 info!("Adding event at position {}", f64::from(i) / 10.0);

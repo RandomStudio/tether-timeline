@@ -13,28 +13,27 @@ pub struct AnchorPoint {
     pub control_2: Point2D,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct BezierCurve {
-    pub points: Vec<AnchorPoint>,
+pub type BezierCurve = Vec<AnchorPoint>;
+
+pub trait Curve {
+    fn add_anchor_point(&mut self, anchor: Point2D, control_1: Point2D, control_2: Point2D);
+    fn get_value_at_position(&self, position: f64) -> Option<f64>;
+    fn get_point_before(&self, position: f64) -> Option<&AnchorPoint>;
+    fn get_point_after(&self, position: f64) -> Option<&AnchorPoint>;
 }
 
-impl BezierCurve {
-    pub fn new() -> Self {
-        Self { points: Vec::new() }
-    }
-
-    pub fn add_anchor_point(&mut self, anchor: Point2D, control_1: Point2D, control_2: Point2D) {
-        self.points.push(AnchorPoint {
+impl Curve for BezierCurve {
+    fn add_anchor_point(&mut self, anchor: Point2D, control_1: Point2D, control_2: Point2D) {
+        self.push(AnchorPoint {
             anchor,
             control_1,
             control_2,
         });
-        self.points
-            .sort_by(|a, b| a.anchor.x.total_cmp(&b.anchor.x));
+        self.sort_by(|a, b| a.anchor.x.total_cmp(&b.anchor.x));
     }
 
-    pub fn get_value_at_position(&self, position: f64) -> Option<f64> {
-        if self.points.is_empty() {
+    fn get_value_at_position(&self, position: f64) -> Option<f64> {
+        if self.is_empty() {
             None
         } else if let Some(prev) = self.get_point_before(position) {
             if let Some(next) = self.get_point_after(position) {
@@ -59,10 +58,10 @@ impl BezierCurve {
     }
 
     fn get_point_before(&self, position: f64) -> Option<&AnchorPoint> {
-        if self.points.is_empty() {
+        if self.is_empty() {
             None
         } else {
-            self.points.iter().reduce(|acc, p| {
+            self.iter().reduce(|acc, p| {
                 if p.anchor.x > acc.anchor.x && p.anchor.x <= position {
                     p
                 } else {
@@ -73,10 +72,10 @@ impl BezierCurve {
     }
 
     fn get_point_after(&self, position: f64) -> Option<&AnchorPoint> {
-        if self.points.is_empty() {
+        if self.is_empty() {
             None
         } else {
-            self.points.iter().rev().reduce(|acc, p| {
+            self.iter().rev().reduce(|acc, p| {
                 if p.anchor.x < acc.anchor.x && p.anchor.x >= position {
                     p
                 } else {

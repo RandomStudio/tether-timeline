@@ -77,7 +77,7 @@ export const calculateValue = (curve: AnchorPoint[], position: number) => {
 }
 
 interface CurveEditorProps extends TrackProps {
-  track: Track
+  track: Track,
 }
 
 const CurveEditor: React.FC<CurveEditorProps> = ({
@@ -87,6 +87,7 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
   pxPerSecond,
   playPosition,
   track: { name, curve },
+	onSave,
 }) => {
   const ref = useRef(null)
 
@@ -108,10 +109,12 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
   const deletePoint = () => {
     if (selectedPointIndex == -1) return
     store.dispatch(updateCurve({
+			timeline: store.getState().selectedTimeline || '',
       track: name,
       curve: curve.filter((_p, i) => i !== selectedPointIndex)
     }))
     setSelectedPointIndex(-1)
+		onSave()
   }
 
   const onSingleClick = (_event: React.MouseEvent<HTMLDivElement>) => {
@@ -145,12 +148,14 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
     }
 
     store.dispatch(updateCurve({
+			timeline: store.getState().selectedTimeline || '',
       track: name,
       curve: [
         ...curve,
         { anchor: xy, control_1: c1, control_2: c2 }
       ].sort((a, b) => a.anchor.x - b.anchor.x)
     }))
+		onSave()
   }
 
   const onGrabPoint = (event: React.MouseEvent<SVGCircleElement>, index: number, type: DragPointType) => {
@@ -200,9 +205,10 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
     }
   }
 
-  const onRelease = (_event: React.MouseEvent<HTMLDivElement>) => {
+	const stopDrag = () => {
     const {index, prevPoint, nextPoint, offsetX, offsetY, type } = dragInfo;
     store.dispatch(updateCurve({
+			timeline: store.getState().selectedTimeline || '',
       track: name,
       curve: curve.map(({ anchor, control_1, control_2 }, i) => {
         if (i === index) {
@@ -245,7 +251,20 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
       })
     }))
     setDragInfo({ ...emptyDragInfo })
+		onSave()
   }
+
+	const onRelease = (_event: React.MouseEvent<HTMLDivElement>) => {
+		stopDrag();
+	}
+
+	const onMouseLeave = (_event: React.MouseEvent<HTMLDivElement>) => {
+		const doSave = dragInfo.index > -1;
+		stopDrag();
+		if (doSave) {
+			onSave();
+		}
+	}
 
   /**
    * Create an SVG path from a list of normalized anchors and control points, and the size
@@ -320,7 +339,7 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
         onDoubleClick={onDoubleClick}
         onMouseMove={onDrag}
         onMouseUp={onRelease}
-        onMouseLeave={onRelease}
+        onMouseLeave={onMouseLeave}
         style={{ height: `${height}px`, }}
       >
         <div
