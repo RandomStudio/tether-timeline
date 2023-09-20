@@ -1,13 +1,12 @@
 use log::info;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    bezier::{Curve, Point2D},
     timeline::{InvalidDataError, Result, Timeline, TimelineSnapshot},
     ARGS,
 };
 
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
     pub timelines: Vec<Timeline>,

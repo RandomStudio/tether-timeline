@@ -143,9 +143,13 @@ fn run(model: &Arc<MutexWrapper<Model>>) {
 
         // check for incoming data from tether, such as play/stop/seek requests
         match rx_control.try_recv() {
-            Ok(ControlMessage::Update(timelines)) => {
+            Ok(ControlMessage::Update(timelines, selected_timeline)) => {
                 m.update_timeline_data(timelines);
+                m.set_active_timeline(selected_timeline.as_str());
                 anything_changed = true;
+            }
+            Ok(ControlMessage::Select(timeline)) => {
+                m.set_active_timeline(timeline.as_str());
             }
             Ok(ControlMessage::Play(name)) => {
                 // select the specified timeline and start playback on it

@@ -60,6 +60,7 @@ fetch('/tether-config')
 			});
       // create an output to publish requested state changes on
       const outputState = agent.createOutput('state');
+      const outputSelectTimeline = agent.createOutput('select');
       const outputPlay = agent.createOutput('play');
       const outputPause = agent.createOutput('pause');
       const outputSeek = agent.createOutput('seek');
@@ -68,6 +69,7 @@ fetch('/tether-config')
           <Provider store={store}>
               <App
 								outPlugState={ outputState }
+								outputSelectTimeline={ outputSelectTimeline }
 								outPlugPlay={ outputPlay }
 								outPlugPause={ outputPause }
 								outPlugSeek={ outputSeek }

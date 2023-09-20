@@ -2,7 +2,7 @@ import { store } from '@/redux/store';
 import { removeTrack } from '@/redux/timeline/slice';
 import { Track } from '@/redux/timeline/types';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { Button } from '@mui/material';
+import { IconButton } from '@mui/material';
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import styles from 'styles/components/timeline/track.module.scss';
 
@@ -56,9 +56,9 @@ const TrackComponent: React.FC<TrackProps> = ({
       style={{ width: `${width * scale}px` }}
     >
       <div className={ styles.header }>
-        <Button size="small" onClick={deleteTrack}>
+        <IconButton size="small" onClick={deleteTrack}>
           <DeleteIcon fontSize="small" sx={{ color: "#000000" }} />
-        </Button>
+        </IconButton>
         <p className={ styles.name }>{ name }</p>
         <div className={ styles.spacer } />
       </div>

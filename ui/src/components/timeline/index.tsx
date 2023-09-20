@@ -22,7 +22,6 @@ import {
   OutlinedInput,
   Slider,
   Stack,
-  TextField,
 } from '@mui/material';
 import React from 'react';
 import styles from 'styles/components/timeline/timeline.module.scss';
@@ -182,7 +181,7 @@ class TimelineComponent extends React.Component<TimelineProps, TimelineState> {
               size="small"
               value={scale}
               min={0.1}
-              max={10}
+              max={2.0}
               step={0.01}
               onChange={this.setScale}
               style={{ width: '200px' }}
@@ -237,10 +236,11 @@ class TimelineComponent extends React.Component<TimelineProps, TimelineState> {
                 )}
                 { !settingDuration && (
                   <>
-                    <TextField
+                    {/* <TextField
                       variant="outlined" style={{ margin: '0.5em' }}
                       value={`${duration} second${duration !== 1 ? 's' : ''}`}
-                    />
+                    /> */}
+										<p style={{margin: '0.5em'}}>{ `${duration} second${duration !== 1 ? 's' : ''}` }</p>
                     <IconButton size="small" onClick={_e => this.setState({ settingDuration: true })}>
                       <EditIcon />
                     </IconButton>

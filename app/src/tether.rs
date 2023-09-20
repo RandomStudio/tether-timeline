@@ -12,8 +12,10 @@ use crate::model::Model;
 use crate::timeline::{EventSnapshot, Timeline, TimelineSnapshot};
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct MessagePayloadState {
     timelines: Vec<Timeline>,
+    selected_timeline: String,
 }
 
 #[derive(Deserialize)]
@@ -23,10 +25,11 @@ struct MessagePayloadSeek {
 }
 
 pub enum ControlMessage {
+    Select(String),
     Play(String),
     Stop,
     Seek(String, f64),
-    Update(Vec<Timeline>),
+    Update(Vec<Timeline>, String),
 }
 
 pub enum StatusMessage {
@@ -45,6 +48,7 @@ pub struct Tether {
     rx: Receiver<StatusMessage>,
     agent: TetherAgent,
     input_state: PlugDefinition,
+    input_select_timeline: PlugDefinition,
     input_play: PlugDefinition,
     input_pause: PlugDefinition,
     input_seek: PlugDefinition,
@@ -75,6 +79,12 @@ impl Tether {
             .qos(2)
             .build(&agent)
             .expect("Could not create input plug 'state'");
+
+        let input_select_timeline = PlugOptionsBuilder::create_input("select")
+            .topic("tether-timeline-ui/+/select")
+            .qos(2)
+            .build(&agent)
+            .expect("Could not create input plug 'select'");
 
         let input_play = PlugOptionsBuilder::create_input("play")
             // TODO generic subscription, but with specific enough plug name somehow
@@ -120,6 +130,7 @@ impl Tether {
             rx,
             agent,
             input_state,
+            input_select_timeline,
             input_play,
             input_pause,
             input_seek,
@@ -139,10 +150,25 @@ impl Tether {
                 if plug_name.as_str().eq(self.input_state.name()) {
                     match rmp_serde::from_slice::<MessagePayloadState>(message.payload()) {
                         Ok(state) => {
-                            tx.send(ControlMessage::Update(state.timelines)).ok();
+                            tx.send(ControlMessage::Update(
+                                state.timelines,
+                                state.selected_timeline,
+                            ))
+                            .ok();
                         }
                         Err(err) => {
                             error!("Could not decode payload from 'state' message. {}", err);
+                        }
+                    }
+                }
+                // new timeline selected
+                else if plug_name.as_str().eq(self.input_select_timeline.name()) {
+                    match rmp_serde::from_slice::<String>(message.payload()) {
+                        Ok(timeline) => {
+                            tx.send(ControlMessage::Select(timeline)).ok();
+                        }
+                        Err(err) => {
+                            error!("Could not decode payload from 'play' message. {}", err);
                         }
                     }
                 }

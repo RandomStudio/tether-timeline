@@ -3,6 +3,19 @@ import { createSlice } from '@reduxjs/toolkit';
 import { AnchorPoint, Timeline, TimelineSnapshot, TimelineState, Track } from './types';
 
 import type { PayloadAction } from "@reduxjs/toolkit"
+
+interface AddTimelinePayload {
+	name: string
+	duration: number
+	fps: number
+	loopPlayback: boolean
+}
+
+interface RenameTimelinePayload {
+  oldName: string
+  newName: string
+}
+
 interface UpdateTimelinePayload {
   name: string
   duration: number
@@ -39,20 +52,6 @@ const getDefaultCurve = (): AnchorPoint[] => [
     control_2: { x: 1.0, y: 0.5 }
   },
 ]
-
-const getNewTimeline = (name: string): Timeline => ({
-  name,
-  duration: 10,
-	fps: 60,
-  loopPlayback: false,
-  tracks: [{
-    name: "Track 1",
-    curve: getDefaultCurve(),
-		events: [],
-  } as Track],
-	position: 0.0,
-	isPlaying: false,
-})
 
 export const findTrack = (state: TimelineState, timeline: string, name: string): Track | undefined => (
 	state.timelines.find(tl => tl.name === timeline)?.tracks.find(t => t.name === name)
@@ -123,12 +122,21 @@ const timelineEditorSlice = createSlice({
         state.selectedTimeline = action.payload
       }
     },
-    addTimeline(state, _action: PayloadAction<void>) {
-			let idx = state.timelines.length + 1;
-			while (state.timelines.find(({ name }) => name === `Timeline ${idx}`)) {
-				idx += 1;
+    addTimeline(state, action: PayloadAction<AddTimelinePayload>) {
+			const { name, duration, fps, loopPlayback } = action.payload
+      const timeline: Timeline = {
+				name,
+				duration,
+				fps,
+				loopPlayback,
+				tracks: [{
+					name: "Track 1",
+					curve: getDefaultCurve(),
+					events: [],
+				} as Track],
+				position: 0.0,
+				isPlaying: false,
 			}
-      const timeline = getNewTimeline(`Timeline ${idx}`)
       state.timelines.push(timeline)
       state.selectedTimeline = timeline.name
     },
@@ -141,6 +149,15 @@ const timelineEditorSlice = createSlice({
         selectedTimeline: timelines.length ? timelines[0].name : null,
       }
     },
+		renameTimeline(state, action: PayloadAction<RenameTimelinePayload>) {
+			const timeline = state.timelines.find(t => t.name === action.payload.oldName);
+			if (timeline) {
+				timeline.name = action.payload.newName;
+			}
+			if (state.selectedTimeline === action.payload.oldName) {
+				state.selectedTimeline = action.payload.newName;
+			}
+		},
     updateTimeline(state, action: PayloadAction<UpdateTimelinePayload>) {
       return {
         ...state,
@@ -211,6 +228,7 @@ export const {
 	setTimelineState,
   addTimeline,
   removeTimeline,
+	renameTimeline,
   updateTimeline,
   addTrack,
   removeTrack,
