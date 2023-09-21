@@ -1,4 +1,10 @@
-use log::info;
+use std::{
+    fs::{File, OpenOptions},
+    io::{Read, Write},
+    path::Path,
+};
+
+use log::{debug, info};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -6,7 +12,7 @@ use crate::{
     ARGS,
 };
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
     pub timelines: Vec<Timeline>,
@@ -15,20 +21,45 @@ pub struct Model {
 
 impl Model {
     pub fn new() -> Self {
-        let name = String::from("Timeline 1");
-        let mut t = Timeline::new(&name, 10.0, ARGS.fps, true);
-        if let Ok(track) = t.add_track("Track 1") {
-            track.add_event(0.0, String::from("Start"));
-            (1..10).step_by(1).for_each(|i| {
-                info!("Adding event at position {}", f64::from(i) / 10.0);
-                track.add_event(f64::from(i) / 10.0, format!("Event {}", i));
-            });
-            track.add_event(1.0, String::from("End"));
+        Self {
+            timelines: Vec::new(),
+            selected_timeline: None,
+        }
+    }
+
+    pub fn load_from_path(&mut self, path: &str) -> std::io::Result<()> {
+        let p = Path::new(path);
+        if !p.exists() {
+            debug!("File at path {} does not exist. Creating new.", path);
+            if let Ok(_file) = File::create(path) {
+                debug!("Successfully created file at path {}", path);
+            }
         }
 
-        Self {
-            timelines: vec![t],
-            selected_timeline: Some(name),
+        let mut file = OpenOptions::new().read(true).open(path)?;
+
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)?;
+        if let Ok(data) = serde_json::from_str::<Model>(&contents) {
+            self.update_timeline_data(data.timelines);
+            if let Some(selected_timeline) = data.selected_timeline {
+                self.set_active_timeline(selected_timeline.as_str());
+            }
+            Ok(())
+        } else {
+            debug!("Invalid data in file, overwriting with current model state");
+            self.save_to_path(path)
+            // Err(std::io::Error::from(std::io::ErrorKind::InvalidData))
+        }
+    }
+
+    pub fn save_to_path(&self, path: &str) -> std::io::Result<()> {
+        if let Ok(json) = serde_json::to_string(self) {
+            let mut file = File::create(path)?;
+            file.write_all(json.as_bytes())?;
+            Ok(())
+        } else {
+            Err(std::io::Error::from(std::io::ErrorKind::InvalidData))
         }
     }
 

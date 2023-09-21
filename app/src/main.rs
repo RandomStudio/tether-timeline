@@ -12,6 +12,7 @@ use std::{
         Arc, Mutex,
     },
     thread,
+    time::SystemTime,
 };
 use tether::StatusMessage;
 
@@ -125,9 +126,12 @@ fn run(model: &Arc<MutexWrapper<Model>>) {
     let (tx_control, rx_control) = mpsc::sync_channel(1);
     let (tx_status, rx_status) = mpsc::sync_channel(1);
     let tether = Tether::new(tx_control, rx_status);
+
     publish_state(&tx_status, model);
 
     thread::spawn(move || tether.start());
+
+    let mut save_requested_at: Option<SystemTime> = None;
 
     loop {
         // Listen for exit signals
@@ -197,6 +201,20 @@ fn run(model: &Arc<MutexWrapper<Model>>) {
         // publish the current model state
         if anything_changed {
             publish_state(&tx_status, model);
+            save_requested_at = Some(SystemTime::now());
+        } else if save_requested_at.is_some() {
+            if let Ok(elapsed) = save_requested_at.unwrap().elapsed() {
+                if elapsed.as_millis() >= 1000 {
+                    info!("Saving model state to file");
+                    match m.save_to_path("state.json") {
+                        Ok(()) => {
+                            info!("Model state saved to file successfully");
+                            save_requested_at = None
+                        }
+                        Err(err) => error!("Could not save state to state.json, error: {}", err),
+                    }
+                }
+            }
         }
     }
 }
@@ -205,6 +223,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     init_logging(ARGS.verbosity);
 
     let model: Arc<MutexWrapper<Model>> = Arc::new(MutexWrapper(Mutex::new(Model::new())));
+    match model.0.lock().unwrap().load_from_path("state.json") {
+        Ok(()) => (),
+        Err(err) => error!(
+            "Could not load model state from file state.json. Error: {}",
+            err
+        ),
+    }
 
     match catch_unwind(|| run(&model)) {
         Ok(_) => println!("Exited successfully"),
