@@ -108,6 +108,19 @@ const timelineEditorSlice = createSlice({
         ...state,
         ...newState
       }
+			// return {
+			// 	timelines: newState.timelines.map(t => {
+			// 		const ot = state.timelines.find(tl => tl.name === t.name);
+			// 		if (ot) {
+			// 			return {
+			// 				...ot,
+			// 				...t
+			// 			};
+			// 		}
+			// 		return t;
+			// 	}),
+			// 	selectedTimeline: newState.selectedTimeline,
+			// }
     },
 		setTimelineState(state, action: PayloadAction<TimelineSnapshot>) {
 			const timeline = state.timelines.find(t => t.name === action.payload.name);

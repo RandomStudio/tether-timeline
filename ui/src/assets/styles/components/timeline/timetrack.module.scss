@@ -32,10 +32,21 @@
     .timecode {
       font-size: 11px;
       line-height: 14px;
+			height: 100%;
       position: absolute;
       top: 0;
       transform: translateX(-50%);
       color: black;
+
+			&:before {
+				content: ' ';
+				width: 1px;
+				height: 30%;
+				position: absolute;
+				bottom: 0;
+				left: 50%;
+				border-left: 1px solid black;
+			}
 
       span {
         text-align: center;

@@ -64,28 +64,32 @@ const TimeTrack: React.FC<TimeTrackProps> = ({
         createTimecodeElement(i * 2 + 1)
       ))
     } else if(scale > 0.15) {
-      return new Array(duration / 5).fill(0).map((_v, i) => (
+      return new Array(Math.ceil(duration / 5)).fill(0).map((_v, i) => (
         createTimecodeElement(i * 5 + 5)
       ))
     } else if (scale > 0.06) {
-      return new Array(duration / 10).fill(0).map((_v, i) => (
+      return new Array(Math.ceil(duration / 10)).fill(0).map((_v, i) => (
         createTimecodeElement(i * 10 + 10)
       ))
     } else if (scale > 0.01) {
-      return new Array(duration / 30).fill(0).map((_v, i) => (
+      return new Array(Math.ceil(duration / 30)).fill(0).map((_v, i) => (
         createTimecodeElement(i * 30 + 30)
       ))
     } else {
-			return new Array(duration / 60).fill(0).map((_v, i) => (
+			return new Array(Math.ceil(duration / 60)).fill(0).map((_v, i) => (
         createTimecodeElement(i * 60 + 60)
       ))
 		}
   }
 
   const createTimecodeElement = (seconds: number) => (
-    <div key={`${seconds}-sec`} className={ styles.timecode } style={{
-      left: `${seconds * pxPerSecond * scale}px`,
-    }}>
+    <div
+			key={`${seconds}-sec`}
+			className={ styles.timecode }
+			style={{
+				left: `${seconds * pxPerSecond * scale}px`,
+    	}}
+		>
       <span>{ formatTimecode(seconds) }</span>
     </div>
   )
@@ -103,37 +107,7 @@ const TimeTrack: React.FC<TimeTrackProps> = ({
       onMouseDown={press}
       style={{ width: `${width * scale}px` }}
     >
-      <div
-        className={ `${styles.ticks} ${styles.large}` }
-        style={{
-          background: `repeating-linear-gradient(
-            to right,
-            black 0px,
-            black 1px,
-            transparent 1px,
-            transparent ${pxPerSecond * scale}px
-          )`
-        }}
-      />
-			{ scale > 0.15 && (
-				<div
-					className={ `${styles.ticks} ${styles.small}` }
-					style={{
-						left: `${0.5 * pxPerSecond * scale}px`,
-						background: `repeating-linear-gradient(
-							to right,
-							black 0px,
-							black 1px,
-							transparent 1px,
-							transparent ${pxPerSecond * scale}px
-						)`
-					}}
-				/>
-			)}
       <div className={ styles.playhead } style={{ left: `${position * width * scale}px` }} />
-      <div className={ `${styles.timecodes} ${styles.shadow}` }>
-        { generateTimecodeLabels() }
-      </div>
       <div className={ styles.timecodes }>
         { generateTimecodeLabels() }
       </div>
