@@ -180,7 +180,7 @@ class TimelineComponent extends React.Component<TimelineProps, TimelineState> {
             <Slider
               size="small"
               value={scale}
-              min={0.1}
+              min={0.01}
               max={2.0}
               step={0.01}
               onChange={this.setScale}
