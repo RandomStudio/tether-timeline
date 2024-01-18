@@ -129,7 +129,6 @@ const CurveEditor: React.FC<TrackProps> = ({
 	}, []);
 
 	const onKey = (e: KeyboardEvent) => {
-		console.log(`*** KEY`, e.shiftKey)
 		setIsShiftPressed(e.shiftKey)
 	}
 
