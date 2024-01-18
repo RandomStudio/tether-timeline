@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 
-import { AnchorPoint, Timeline, TimelineSnapshot, TimelineState, Track } from './types';
+import { AnchorPoint, EventTrigger, Timeline, TimelineSnapshot, TimelineState, Track, TrackMode } from './types';
 
 import type { PayloadAction } from "@reduxjs/toolkit"
 
@@ -34,10 +34,22 @@ interface RenameTrackPayload {
   newName: string
 }
 
+interface SetTrackModePayload {
+	timeline: string,
+	track: string,
+	mode: TrackMode,
+}
+
 interface UpdateCurvePayload {
 	timeline: string
   track: string
   curve: AnchorPoint[]
+}
+
+interface UpdateEventsPayload {
+	timeline: string
+	track: string
+	events: Array<EventTrigger>
 }
 
 const getDefaultCurve = (): AnchorPoint[] => [
@@ -144,8 +156,9 @@ const timelineEditorSlice = createSlice({
 				loopPlayback,
 				tracks: [{
 					name: "Track 1",
+					mode: TrackMode.Curve,
 					curve: getDefaultCurve(),
-					events: [],
+					events: null,
 				} as Track],
 				position: 0.0,
 				isPlaying: false,
@@ -193,8 +206,9 @@ const timelineEditorSlice = createSlice({
           ...timeline?.tracks,
           {
             name,
+						mode: TrackMode.Curve,
             curve: getDefaultCurve(),
-						events: [],
+						events: null,
           } as Track
         ]
       }
@@ -212,6 +226,19 @@ const timelineEditorSlice = createSlice({
         track.name = action.payload.newName
       }
     },
+		setTrackMode(state, action: PayloadAction<SetTrackModePayload>) {
+			const track = findTrack(state, action.payload.timeline, action.payload.track)
+			if (track && action.payload.mode !== track.mode) {
+				track.mode = action.payload.mode
+				if (track.mode === TrackMode.Curve) {
+					track.curve = getDefaultCurve()
+					track.events = null
+				} else {
+					track.curve = null
+					track.events = []
+				}
+			}
+		},
     updateCurve(state, action: PayloadAction<UpdateCurvePayload>) {
       const track = findTrack(state, action.payload.timeline, action.payload.track)
 
@@ -232,6 +259,12 @@ const timelineEditorSlice = createSlice({
         }))
       }
     },
+		updateEvents(state, action: PayloadAction<UpdateEventsPayload>) {
+			const track = findTrack(state, action.payload.timeline, action.payload.track)
+			if (track) {
+				track.events = action.payload.events
+			}
+		},
   }
 })
 
@@ -246,7 +279,9 @@ export const {
   addTrack,
   removeTrack,
   renameTrack,
+	setTrackMode,
   updateCurve,
+	updateEvents,
 } = timelineEditorSlice.actions
 
 export default timelineEditorSlice.reducer

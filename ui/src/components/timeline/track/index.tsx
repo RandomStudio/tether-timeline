@@ -1,14 +1,16 @@
 import { store } from '@/redux/store';
-import { removeTrack } from '@/redux/timeline/slice';
-import { Track } from '@/redux/timeline/types';
+import { removeTrack, setTrackMode } from '@/redux/timeline/slice';
+import { Track, TrackMode } from '@/redux/timeline/types';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { IconButton } from '@mui/material';
+import { IconButton, MenuItem, Select } from '@mui/material';
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import styles from 'styles/components/timeline/track.module.scss';
 
 import CurveEditor from './editors/curve';
+import EventsEditor from './editors/events';
 
 export interface TrackProps {
+	timeline: string,
   playPosition: number
   width: number
   height: number
@@ -20,16 +22,17 @@ export interface TrackProps {
 }
 
 const TrackComponent: React.FC<TrackProps> = ({
-  width,
-  height,
-  scale,
-  duration,
-  pxPerSecond,
-  playPosition,
-  track,
+	width,
+	height,
+	scale,
+	duration,
+	pxPerSecond,
+	playPosition,
+	timeline,
+	track,
 	onSave,
 }) => {
-  const { name } = track
+  const { name, mode, curve } = track
 
   const ref = useRef(null)
 
@@ -49,6 +52,11 @@ const TrackComponent: React.FC<TrackProps> = ({
     store.dispatch(removeTrack(name))
   }
 
+	const onChangeTrackMode = (value: TrackMode) => {
+		store.dispatch(setTrackMode({ timeline, track: name, mode: value }))
+		onSave()
+  }
+
   return (
     <div
       ref={ref}
@@ -61,8 +69,14 @@ const TrackComponent: React.FC<TrackProps> = ({
         </IconButton>
         <p className={ styles.name }>{ name }</p>
         <div className={ styles.spacer } />
+				<Select size="small" variant="outlined" value={mode} onChange={e => onChangeTrackMode(e.target.value as TrackMode)}>
+          <MenuItem value={TrackMode.Curve}>Curve</MenuItem>
+          <MenuItem value={TrackMode.Event}>Event</MenuItem>
+        </Select>
       </div>
+			{ mode === TrackMode.Curve && !!curve && (
         <CurveEditor
+					timeline={timeline}
           width={width}
           height={height}
           scale={scale}
@@ -72,6 +86,20 @@ const TrackComponent: React.FC<TrackProps> = ({
           track={track}
 					onSave={onSave}
         />
+			)}
+			{ mode === TrackMode.Event && (
+				<EventsEditor
+					timeline={timeline}
+					width={width}
+					height={height}
+          scale={scale}
+          duration={duration}
+          pxPerSecond={pxPerSecond}
+          playPosition={playPosition}
+          track={track}
+					onSave={onSave}
+				/>
+			)}
     </div>
   )
 }

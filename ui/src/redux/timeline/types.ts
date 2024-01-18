@@ -14,10 +14,16 @@ export interface EventTrigger {
 	data: string
 }
 
+export enum TrackMode {
+	Curve = "Curve",
+	Event = "Event",
+}
+
 export interface Track {
   name: string
-	curve: AnchorPoint[]
-	events: Array<EventTrigger>
+	mode: TrackMode
+	curve: AnchorPoint[] | null
+	events: Array<EventTrigger> | null
 }
 
 export interface Timeline {
@@ -50,7 +56,7 @@ export interface TrackSnapshot {
 	// curve value at snapshot position, if any
 	value?: number,
 	// events at snapshot position, if any
-	events: Array<string>,
+	events?: Array<string>,
 }
 
 export interface TimelineSnapshot {

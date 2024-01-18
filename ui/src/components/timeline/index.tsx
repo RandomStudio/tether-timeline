@@ -148,7 +148,7 @@ class TimelineComponent extends React.Component<TimelineProps, TimelineState> {
   }
 
   render() {
-    const { timeline: { duration, loopPlayback, tracks, position, isPlaying }, onChange } = this.props
+    const { timeline: { name, duration, loopPlayback, tracks, position, isPlaying }, onChange } = this.props
     const { largeTrackHeight, scale, settingDuration } = this.state
     return (
       <div className={ styles.timeline }>
@@ -203,6 +203,7 @@ class TimelineComponent extends React.Component<TimelineProps, TimelineState> {
             { tracks.map((track, index) => (
               <TrackComponent
                 key={`track-${index}`}
+								timeline={name}
                 width={duration * PX_PER_SECOND}
                 height={largeTrackHeight ? 100 : 50}
                 scale={scale}

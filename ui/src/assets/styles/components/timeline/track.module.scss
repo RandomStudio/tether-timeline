@@ -1,3 +1,5 @@
+@import '../../global.module.scss';
+
 .track {
   display: flex;
   flex-direction: column;
@@ -68,6 +70,50 @@
       svg {
         position: relative;
         overflow: visible;
+
+				.valueLine {
+					fill: none;
+					stroke: rgba(25, 118, 210, 0.5);
+				}
+
+				.curvePath {
+					fill: none;
+					stroke: #444;//$blue;
+					stroke-width: 1;
+				}
+
+				.controlPointLine {
+					stroke: #444;//rgba(25, 118, 210, 0.5);
+					stroke-width: 1;
+
+					&.selected {
+						stroke: $blue;
+					}
+				}
+
+				.anchor {
+					fill: #444;//white;
+					stroke: none;//$blue;
+					// stroke-width: 1;
+					cursor: pointer;
+					pointer-events: all;
+
+					&.selected {
+						fill: $blue;
+					}
+				}
+
+				.control {
+					fill: #444;//rgba(25, 118, 210, 0.5);
+					stroke: none;//rgba(25, 118, 210, 0.5);
+					// stroke-width: 1;
+					cursor: pointer;
+					pointer-events: all;
+
+					&.selected {
+						fill: $blue;
+					}
+				}
       }
 
       .pointTooltip {
@@ -75,49 +121,31 @@
         padding: 0;
         margin: 0;
       }
-
-      &.video {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-
-        video {
-          background-color: black;
-          aspect-ratio: 6/5;
-        }
-
-        .fileName {
-          margin: 0.5em;
-
-          &.blank {
-            color: rgba(0,0,0,0.5);
-            font-style: italic;
-          }
-        }
-
-        .thumb {
-          background-color: black;
-        }
-      }
     }
   }
 
-}
+	.event {
+		cursor: pointer;
+		position: absolute;
+    top: 50%;
 
-.sampleLocationList {
-  display: flex;
-  flex-direction: column;
-}
+		.label {
+			transform: rotate(90deg);
+			margin-left: -12px;
+			margin-top: -12px;
+			color: #444;
 
-.sampleLocationGenerator {
-  margin-top: 1em;
-  border-top: 1px solid black;
+			&.selected {
+				color: $blue;
+				// path {
+				// 	fill: #ddd;
+				// 	stroke: #444;
+				// 	stroke-width: 1px;
+				// }
+			}
+		}
+	}
 
-  .row {
-    display: flex;
-    flex-direction: row;
-    padding: 0.5em 1em 0.5em 0;
-  }
 }
 
 .copyFromScene {

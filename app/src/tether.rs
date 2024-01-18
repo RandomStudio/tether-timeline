@@ -245,13 +245,15 @@ impl Tether {
         if data.is_playing {
             // for each event that has occurred in each track in this update, publish a separate message as well
             data.tracks.iter().for_each(|track| {
-                track.events.iter().for_each(|event| {
-                    self.publish_event(&EventSnapshot {
-                        timeline: data.name.clone(),
-                        track: track.name.clone(),
-                        data: event.clone(),
+                if let Some(events) = &track.events {
+                    events.iter().for_each(|event| {
+                        self.publish_event(&EventSnapshot {
+                            timeline: data.name.clone(),
+                            track: track.name.clone(),
+                            data: event.clone(),
+                        });
                     });
-                });
+                }
             });
         }
     }

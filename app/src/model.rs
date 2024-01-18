@@ -125,9 +125,15 @@ impl Model {
     }
 
     /// store new timelines, ensuring that any current play state gets applied to the same incoming timeline
-    pub fn update_timeline_data(&mut self, data: Vec<Timeline>) {
-        self.timelines = data.iter().fold(Vec::new(), |mut list, t| {
+    pub fn update_timeline_data(&mut self, mut data: Vec<Timeline>) {
+        self.timelines = data.iter_mut().fold(Vec::new(), |mut list, t| {
             // clone the incoming timeline in a way that retains the current position and play state
+            if let Some(original) = self.get_timeline(t.name.as_str()) {
+                t.seek(original.get_position());
+                if original.is_playing() {
+                    t.play()
+                }
+            }
             let timeline = Timeline::from(t);
             list.push(timeline);
             list

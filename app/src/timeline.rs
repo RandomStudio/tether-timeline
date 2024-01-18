@@ -5,7 +5,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::bezier::{BezierCurve, Curve, Point2D};
+use crate::bezier::{AnchorPoint, BezierCurve, Curve, Point2D};
 
 pub type Result<T> = std::result::Result<T, InvalidDataError>;
 
@@ -50,14 +50,23 @@ impl EventTrigger {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub enum TrackMode {
+    #[default]
+    Curve,
+    Event,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Track {
     /// track name
     pub name: String,
+    /// track type
+    pub mode: TrackMode,
     /// bezier curve
-    pub curve: BezierCurve,
+    pub curve: Option<BezierCurve>,
     /// list of events to trigger at specific times
-    pub events: Vec<EventTrigger>,
+    pub events: Option<Vec<EventTrigger>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -67,46 +76,67 @@ pub struct TrackSnapshot {
     /// curve value at snapshot position, if any
     pub value: Option<f64>,
     /// events at snapshot position, if any
-    pub events: Vec<String>,
+    pub events: Option<Vec<String>>,
 }
 
 impl Track {
-    pub fn new(name: &str) -> Self {
-        let mut s = Self {
-            name: String::from(name),
-            curve: BezierCurve::new(),
-            events: Vec::new(),
-        };
-        s.curve.add_anchor_point(
-            Point2D { x: 0.0, y: 0.5 },
-            Point2D { x: 0.0, y: 0.5 },
-            Point2D { x: 0.2, y: 0.5 },
-        );
-        s.curve.add_anchor_point(
-            Point2D { x: 1.0, y: 0.5 },
-            Point2D { x: 0.8, y: 0.5 },
-            Point2D { x: 1.0, y: 0.5 },
-        );
-        s
+    pub fn new(name: &str, mode: TrackMode) -> Self {
+        if mode == TrackMode::Curve {
+            Self {
+                name: String::from(name),
+                mode: TrackMode::Curve,
+                curve: Some(vec![
+                    AnchorPoint {
+                        anchor: Point2D { x: 0.0, y: 0.5 },
+                        control_1: Point2D { x: 0.0, y: 0.5 },
+                        control_2: Point2D { x: 0.2, y: 0.5 },
+                    },
+                    AnchorPoint {
+                        anchor: Point2D { x: 1.0, y: 0.5 },
+                        control_1: Point2D { x: 0.8, y: 0.5 },
+                        control_2: Point2D { x: 1.0, y: 0.5 },
+                    },
+                ]),
+                events: None,
+            }
+        } else {
+            Self {
+                name: String::from(name),
+                mode: TrackMode::Event,
+                curve: None,
+                events: Some(Vec::new()),
+            }
+        }
     }
 
     pub fn set_name(&mut self, name: &str) {
         self.name = String::from(name);
     }
 
-    pub fn add_event(&mut self, position: f64, data: String) {
-        self.events.push(EventTrigger { position, data });
+    pub fn add_event(&mut self, position: f64, data: String) -> Result<()> {
+        if let Some(ref mut events) = self.events {
+            events.push(EventTrigger { position, data });
+            Ok(())
+        } else {
+            Err(InvalidDataError)
+        }
     }
 
     pub fn snapshot(&self, prev_position: f64, cur_position: f64) -> TrackSnapshot {
         TrackSnapshot {
             name: self.name.clone(),
-            value: self.curve.get_value_at_position(cur_position),
-            events: self.events.iter().fold(Vec::new(), |mut list, event| {
-                if event.occurred_between(prev_position, cur_position) {
-                    list.push(event.data.clone());
-                }
-                list
+            value: if let Some(ref curve) = self.curve {
+                curve.get_value_at_position(cur_position)
+            } else {
+                None
+            },
+            events: self.events.as_ref().map(|events| {
+                events.iter().fold(Vec::new(), |mut list, event| {
+                    if event.occurred_between(prev_position, cur_position) {
+                        list.push(event.data.clone());
+                    }
+                    list
+                })
             }),
         }
     }
@@ -177,7 +207,7 @@ impl Timeline {
         let mut s = Timeline::new(src.name.as_str(), src.duration, src.fps, src.loop_playback);
         src.get_tracks().iter_mut().for_each(|t| {
             // if let Some(track) = s.get_track_mut(&t.name) {
-            if let Ok(track) = s.add_track(t.name.as_str()) {
+            if let Ok(track) = s.add_track(t.name.as_str(), t.mode) {
                 track.curve = t.curve.clone();
                 track.events = t.events.clone();
             }
@@ -203,11 +233,11 @@ impl Timeline {
         self.tracks.iter().collect()
     }
 
-    pub fn add_track(&mut self, name: &str) -> Result<&mut Track> {
+    pub fn add_track(&mut self, name: &str, mode: TrackMode) -> Result<&mut Track> {
         if let Some(_t) = self.tracks.iter().find(|t| t.name.eq(name)) {
             Err(InvalidDataError)
         } else {
-            self.tracks.push(Track::new(name));
+            self.tracks.push(Track::new(name, mode));
             self.update_required = true;
             Ok(self.tracks.last_mut().unwrap())
         }

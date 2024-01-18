@@ -1,9 +1,23 @@
 import { store } from '@/redux/store';
 import { updateCurve } from '@/redux/timeline/slice';
-import { AnchorPoint, Point, Track } from '@/redux/timeline/types';
+import { AnchorPoint, Point, TrackMode } from '@/redux/timeline/types';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { IconButton } from '@mui/material';
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  IconButton,
+  InputAdornment,
+  InputLabel,
+  OutlinedInput,
+  Stack,
+} from '@mui/material';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import styles from 'styles/components/timeline/track.module.scss';
 
 import { TrackProps } from '..';
@@ -25,7 +39,7 @@ interface DragInfo {
   maxOffsetX: number
   prevPoint: AnchorPoint | null
   nextPoint: AnchorPoint | null
-  type: DragPointType
+  type: DragPointType,
 }
 
 const emptyDragInfo: DragInfo = {
@@ -38,7 +52,7 @@ const emptyDragInfo: DragInfo = {
   maxOffsetX: 0,
   prevPoint: null,
   nextPoint: null,
-  type: DragPointType.ANCHOR
+  type: DragPointType.ANCHOR,
 }
 
 const clamp = (a: number, min: number, max: number) => (
@@ -76,24 +90,48 @@ export const calculateValue = (curve: AnchorPoint[], position: number) => {
   return cubicBezier(prev.anchor, prev.control_2, next.control_1, next.anchor, t).y
 }
 
-interface CurveEditorProps extends TrackProps {
-  track: Track,
-}
+const dummyAnchor = {
+	anchor: { x: -1, y: -1 },
+	control_1: { x: -1, y: -1 },
+	control_2: { x: -1, y: -1 }
+} as AnchorPoint
 
-const CurveEditor: React.FC<CurveEditorProps> = ({
+const CurveEditor: React.FC<TrackProps> = ({
   width,
   height,
   scale,
   pxPerSecond,
   playPosition,
-  track: { name, curve },
+  track: { name, mode, curve },
 	onSave,
 }) => {
+	if (mode !== TrackMode.Curve || !curve || !curve.length) {
+		return <></>
+	}
+
   const ref = useRef(null)
 
   const [ bounds, setBounds ] = useState({ x: 0, y: 0 })
   const [ selectedPointIndex, setSelectedPointIndex ] = useState(-1)
+	const [ showEditDialog, setShowEditDialog ] = useState(false)
+	const [ selectedAnchorPointData, setSelectedAnchorPointData ] = useState<AnchorPoint>(dummyAnchor)
   const [ dragInfo, setDragInfo ] = useState<DragInfo>({ ...emptyDragInfo })
+	const [ isShiftPressed, setIsShiftPressed ] = useState(false)
+
+	useEffect(() => {
+		window.addEventListener('keydown', onKey)
+		window.addEventListener('keyup', onKey)
+
+		return () => {
+			window.removeEventListener('keydown', onKey)
+			window.removeEventListener('keyup', onKey)
+		}
+	}, []);
+
+	const onKey = (e: KeyboardEvent) => {
+		console.log(`*** KEY`, e.shiftKey)
+		setIsShiftPressed(e.shiftKey)
+	}
 
   useLayoutEffect(() => {
     if (ref.current) {
@@ -105,17 +143,6 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
       });
     }
   }, []);
-
-  const deletePoint = () => {
-    if (selectedPointIndex == -1) return
-    store.dispatch(updateCurve({
-			timeline: store.getState().selectedTimeline || '',
-      track: name,
-      curve: curve.filter((_p, i) => i !== selectedPointIndex)
-    }))
-    setSelectedPointIndex(-1)
-		onSave()
-  }
 
   const onSingleClick = (_event: React.MouseEvent<HTMLDivElement>) => {
     setSelectedPointIndex(-1)
@@ -183,7 +210,7 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
       maxOffsetX,
       prevPoint: prev,
       nextPoint: next,
-      type
+      type,
     })
   }
 
@@ -227,19 +254,29 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
               x: control_1.x + (offsetX / (width * scale)),
               y: control_1.y - (offsetY / height)
             }
-            : {
-              x: p.x + (control_1.x - anchor.x),
-              y: p.y + (control_1.y - anchor.y),
-            }
+            : type === DragPointType.CONTROL_2 && isShiftPressed
+							?	getMirroredControlPoint(
+									anchor,
+									{ x: control_2.x + (offsetX / (width * scale)), y: control_2.y - (offsetY / height) }
+								)
+							: {
+								x: p.x + (control_1.x - anchor.x),
+								y: p.y + (control_1.y - anchor.y),
+							}
           const c2 = type === DragPointType.CONTROL_2
             ? {
               x: control_2.x + (offsetX / (width * scale)),
               y: control_2.y - (offsetY / height)
             }
-            : {
-              x: p.x + (control_2.x - anchor.x),
-              y: p.y + (control_2.y - anchor.y),
-            }
+            : type === DragPointType.CONTROL_1 && isShiftPressed
+						?	getMirroredControlPoint(
+								anchor,
+								{ x: control_1.x + (offsetX / (width * scale)), y: control_1.y - (offsetY / height) }
+							)
+						: {
+								x: p.x + (control_2.x - anchor.x),
+								y: p.y + (control_2.y - anchor.y),
+							}
           return {
             anchor: p,
             control_1: c1,
@@ -264,6 +301,80 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
 		if (doSave) {
 			onSave();
 		}
+	}
+
+	const onDoubleClickAnchorPoint = (index: number) => {
+		setSelectedPointIndex(index)
+		setSelectedAnchorPointData({
+			anchor: { ...curve[index].anchor },
+			control_1: { ...curve[index].control_1 },
+			control_2: { ...curve[index].control_2 },
+		})
+		setShowEditDialog(true)
+	}
+
+	const onUpdateAnchorTime = (time: number) => {
+		if (selectedPointIndex == -1) return
+		setSelectedAnchorPointData({
+			...selectedAnchorPointData,
+			anchor: {
+				...selectedAnchorPointData.anchor,
+				x: time * pxPerSecond / width
+			},
+		})
+	}
+
+	const onUpdateAnchorY = (y: number) => {
+		if (selectedPointIndex == -1) return
+		setSelectedAnchorPointData({
+			...selectedAnchorPointData,
+			anchor: {
+				...selectedAnchorPointData.anchor,
+				y
+			},
+		})
+	}
+
+	const onConfirmEditAnchorPoint = () => {
+		if (selectedPointIndex == -1) {
+			deselectAnchorPoint()
+			return
+		}
+
+		store.dispatch(updateCurve({
+			timeline: store.getState().selectedTimeline || '',
+      track: name,
+			curve: curve.map((c, i) => (
+				i === selectedPointIndex ? {
+					...selectedAnchorPointData
+				} : c
+			)).sort((a, b) => a.anchor.x - b.anchor.x)
+    }))
+
+		onSave()
+		deselectAnchorPoint()
+	}
+
+	const onDeleteAnchorPoint = () => {
+		if (selectedPointIndex == -1) {
+			deselectAnchorPoint()
+			return
+		}
+
+    store.dispatch(updateCurve({
+			timeline: store.getState().selectedTimeline || '',
+      track: name,
+      curve: curve.filter((_p, i) => i !== selectedPointIndex),
+    }))
+
+		onSave()
+    deselectAnchorPoint()
+	}
+
+	const deselectAnchorPoint = () => {
+		setSelectedPointIndex(-1)
+		setSelectedAnchorPointData(dummyAnchor)
+		setShowEditDialog(false)
 	}
 
   /**
@@ -298,6 +409,11 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
     }, '')
   }
 
+	const getMirroredControlPoint = (anchor: Point, control: Point): Point => ({
+		x: anchor.x + (anchor.x - control.x),
+		y: anchor.y + (anchor.y - control.y),
+	})
+
   // Define the current curve by applying any offsets that are the result of dragging anchor or control points
   const currentCurve = dragInfo.index < 0
     ? curve
@@ -319,10 +435,14 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
             anchor,
             control_1: dragInfo.type === DragPointType.CONTROL_1
               ? { x: control_1.x + offset.x, y: control_1.y - offset.y }
-              : control_1,
+              : dragInfo.type === DragPointType.CONTROL_2 && isShiftPressed
+								? getMirroredControlPoint(anchor, { x: control_2.x + offset.x, y: control_2.y - offset.y })
+								: control_1,
             control_2: dragInfo.type === DragPointType.CONTROL_2
               ? { x: control_2.x + offset.x, y: control_2.y - offset.y }
-              : control_2,
+              : dragInfo.type === DragPointType.CONTROL_1 && isShiftPressed
+							? getMirroredControlPoint(anchor, { x: control_1.x + offset.x, y: control_1.y - offset.y })
+							: control_2,
           }
         }
       } else {
@@ -364,21 +484,18 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
         >
           <g>
             <line
-              fill="none"
-              stroke="#000000"
-              strokeOpacity={0.3}
+							className={styles.valueLine}
               x1={0}
               y1={(1.0 - playY) * height}
               x2={width * scale}
               y2={(1.0 - playY) * height}
             />
             <path
-              fill="none"
-              stroke="#1976D2"
-              strokeWidth="1"
+							className={styles.curvePath}
               d={createPath(currentCurve, width * scale, height)}
             />
             { currentCurve.map(({ anchor, control_1, control_2 }, i, _arr) => {
+							let isSelected = selectedPointIndex == i || dragInfo.index == i
               const p = {
                 x: anchor.x * width * scale,
                 y: (1.0 - anchor.y) * height,
@@ -394,49 +511,77 @@ const CurveEditor: React.FC<CurveEditorProps> = ({
               return (
                 <React.Fragment key={i}>
                   <line
-                    stroke="rgba(25, 118, 210, 0.5)" strokeWidth="1"
+										className={`${styles.controlPointLine} ${isSelected ? styles.selected: ''}`}
                     x1={c1.x} y1={c1.y} x2={p.x} y2={p.y}
                   />
                   <line
-                    stroke="rgba(25, 118, 210, 0.5)" strokeWidth="1"
+                    className={`${styles.controlPointLine} ${isSelected ? styles.selected: ''}`}
                     x1={p.x} y1={p.y} x2={c2.x} y2={c2.y}
                   />
                   <circle
-                    fill={selectedPointIndex == i || dragInfo.index == i ? "#1976D2" : "#ffffff"}
-                    stroke="#1976D2" strokeWidth="1"
+										className={`${styles.anchor} ${isSelected ? styles.selected: ''}`}
                     cx={p.x} cy={p.y} r="5"
-                    cursor="pointer" pointerEvents="all" onMouseDown={e => onGrabPoint(e, i, DragPointType.ANCHOR)}
+                    onMouseDown={e => onGrabPoint(e, i, DragPointType.ANCHOR)}
+										onDoubleClick={e => {
+											e.stopPropagation();
+											stopDrag();
+											onDoubleClickAnchorPoint(i);
+										}}
                   />
                   <circle
-                    fill="rgba(25, 118, 210, 0.5)"
-                    stroke="rgba(25, 118, 210, 0.5)" strokeWidth="1"
+                    className={`${styles.control} ${isSelected ? styles.selected: ''}`}
                     cx={c1.x} cy={c1.y} r="3"
-                    cursor="pointer" pointerEvents="all" onMouseDown={e => onGrabPoint(e, i, DragPointType.CONTROL_1)}
-                  />
+                    onMouseDown={e => onGrabPoint(e, i, DragPointType.CONTROL_1)}
+										/>
                   <circle
-                    fill="rgba(25, 118, 210, 0.5)"
-                    stroke="rgba(25, 118, 210, 0.5)" strokeWidth="1"
+                    className={`${styles.control} ${isSelected ? styles.selected: ''}`}
                     cx={c2.x} cy={c2.y} r="3"
-                    cursor="pointer" pointerEvents="all" onMouseDown={e => onGrabPoint(e, i, DragPointType.CONTROL_2)}
+                    onMouseDown={e => onGrabPoint(e, i, DragPointType.CONTROL_2)}
                   />
                 </React.Fragment>
               )
             }) }
           </g>
         </svg>
-        { selectedPointIndex > -1 && dragInfo.index === -1 && (
-          <div
-            className={ styles.pointTooltip }
-            style={{
-              left: `${bounds.x + currentCurve[selectedPointIndex].anchor.x * width * scale - 18}px`,
-              top: `${bounds.y + (1.0 - currentCurve[selectedPointIndex].anchor.y) * height - 40}px`
-            }}
-          >
-            <IconButton size="small" onClick={deletePoint}>
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </div>
-        )}
+				<Dialog open={showEditDialog}>
+					<DialogTitle>Edit event</DialogTitle>
+					<DialogContent>
+						<Stack direction={'column'} spacing={'1em'} sx={{ marginTop: '0.5em' }}>
+							<FormControl>
+								<InputLabel htmlFor="form-item-time">Time</InputLabel>
+								<OutlinedInput
+									id="form-item-time"
+									type="number"
+									defaultValue={selectedAnchorPointData!.anchor.x * width / pxPerSecond}
+									endAdornment={<InputAdornment position="end">seconds</InputAdornment>}
+									label="Time"
+									onChange={e => onUpdateAnchorTime(Number(e.target.value))}
+								/>
+							</FormControl>
+							<FormControl>
+								<InputLabel htmlFor="form-item-y">Y</InputLabel>
+								<OutlinedInput
+									id="form-item-y"
+									type="number"
+									defaultValue={selectedAnchorPointData!.anchor.y}
+									label="Y"
+									onChange={e => onUpdateAnchorY(Number(e.target.value))}
+								/>
+							</FormControl>
+						</Stack>
+					</DialogContent>
+					<DialogActions>
+						<Button startIcon={<CloseIcon />} onClick={() => setShowEditDialog(false)}>
+							Cancel
+						</Button>
+						<Button startIcon={<CheckIcon />} sx={{ color: 'green' }} onClick={onConfirmEditAnchorPoint}>
+							Save
+						</Button>
+						<IconButton sx={{ color: 'darkred' }} onClick={onDeleteAnchorPoint}>
+							<DeleteIcon />
+						</IconButton>
+					</DialogActions>
+				</Dialog>
       </div>
   )
 }
