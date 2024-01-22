@@ -4,14 +4,16 @@ import styles from 'styles/components/timeline/track.module.scss';
 
 import { TrackProps } from '..';
 
-export const getMouseEventPosition = (event: MouseEvent<HTMLDivElement>, trackWidth: number, trackHeight: number): Point => {
+export const getMouseEventPosition = (event: MouseEvent<HTMLDivElement | SVGElement>, trackWidth: number, trackHeight: number): Point => {
 	const { pageX, pageY } = event
 	const container = (event.currentTarget as HTMLDivElement).closest('.scroll_container')
 	const containerRect = container?.getBoundingClientRect()
+	const editor = (event.currentTarget as HTMLDivElement).closest('.editor')
+	const editorRect = editor?.getBoundingClientRect()
 	const scrollLeft = container?.scrollLeft || 0
 	return {
 		x: (pageX + scrollLeft - (containerRect?.left || 0)) / trackWidth,
-		y: (pageY - (containerRect?.top || 0) / trackHeight),
+		y: (pageY - (editorRect?.top || 0)) / trackHeight,
 	}
 }
 
@@ -82,7 +84,7 @@ const Editor: FC<EditorProps> = ({
 
 	return (
 		<div
-			className={ styles.body }
+			className={ `${styles.body} editor` }
 			onDoubleClick={handleDoubleClick}
 			onMouseDown={onMouseDown}
 			onMouseMove={onMouseMove}

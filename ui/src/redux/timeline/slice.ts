@@ -1,9 +1,9 @@
+import Logger from '@/utils/logger';
 import { createSlice } from '@reduxjs/toolkit';
 
 import { AnchorPoint, EventTrigger, Timeline, TimelineSnapshot, TimelineState, Track, TrackMode } from './types';
 
 import type { PayloadAction } from "@reduxjs/toolkit"
-
 interface AddTimelinePayload {
 	name: string
 	duration: number
@@ -78,7 +78,7 @@ const timelineEditorSlice = createSlice({
   reducers: {
     overwriteTimelineData(state, action: PayloadAction<TimelineState>) {
       const newState = action.payload
-      console.log(`Received new state to overwrite in store:`, newState)
+      Logger.debug(`Received new state to overwrite in store:`, newState)
       if (!Object.keys(newState).includes('timelines')) {
         console.error('Cannot overwrite timeline data; property "timelines" is missing.')
         return
@@ -115,7 +115,7 @@ const timelineEditorSlice = createSlice({
       if (!Object.keys(newState).includes('selectedTimeline')) {
         newState.selectedTimeline = newState.timelines.length ? newState.timelines[0].name : null
       }
-      console.log('Successfully validated new store data. Proceeding to overwrite.')
+      Logger.trace('Successfully validated new store data. Proceeding to overwrite.')
       return {
         ...state,
         ...newState

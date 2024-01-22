@@ -28,6 +28,7 @@ import styles from 'styles/app.module.scss';
 import TimelineComponent from './components/timeline';
 import { RootState, store } from './redux/store';
 import { addTimeline, removeTimeline, renameTimeline, selectTimeline } from './redux/timeline/slice';
+import Logger from './utils/logger';
 
 export interface AppProps {
   outPlugState: Output,
@@ -110,7 +111,7 @@ const App: React.FC<AppProps> = ({
 	}
 
 	const onChangeTimeline = () => {
-		console.log("Sending:", store.getState());
+		Logger.trace("Sending:", store.getState());
 		outPlugState.publish(Buffer.from(encode(store.getState())));
 	}
 
