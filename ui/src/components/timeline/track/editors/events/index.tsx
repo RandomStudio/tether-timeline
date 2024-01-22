@@ -1,7 +1,6 @@
 import { store } from '@/redux/store';
 import { updateEvents } from '@/redux/timeline/slice';
-import { EventTrigger, TrackMode } from '@/redux/timeline/types';
-import Logger from '@/utils/logger';
+import { EventTrigger, Point, TrackMode } from '@/redux/timeline/types';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -19,32 +18,36 @@ import {
   Stack,
 } from '@mui/material';
 import React, { useState } from 'react';
-import styles from 'styles/components/timeline/track.module.scss';
 
+import Editor, { getMouseEventPosition } from '..';
 import { TrackProps } from '../..';
 import EventHandle from './event-handle';
 
-interface DragInfo {
+interface EventHandleDragInfo {
   index: number
-  startX: number
-  offsetX: number
+	position: number
+	grabOffset: number,
+	moved: boolean
 }
 
-const emptyDragInfo: DragInfo = {
+const emptyEventHandleDragInfo: EventHandleDragInfo = {
   index: -1,
-  startX: 0,
-  offsetX: 0,
+	position: 0,
+	grabOffset: 0,
+	moved: false,
 }
 
-const EventsEditor: React.FC<TrackProps> = ({
-  width,
-  height,
-  scale,
-  pxPerSecond,
-  playPosition,
-  track: { name, mode, events },
-	onSave,
-}) => {
+const EventsEditor: React.FC<TrackProps> = (props: TrackProps) => {
+
+	const {
+		width,
+		height,
+		scale,
+		pxPerSecond,
+		track: { name, mode, events },
+		onSave,
+	} = props
+
 	if (mode !== TrackMode.Event || !events) {
 		return <></>
 	}
@@ -52,101 +55,83 @@ const EventsEditor: React.FC<TrackProps> = ({
 	const [ selectedHandleIndex, setSelectedHandleIndex ] = useState(-1)
 	const [ showEditDialog, setShowEditDialog ] = useState(false)
 	const [ selectedEventData, setSelectedEventData ] = useState<EventTrigger>({ position: 0, data: '' })
-	const [ dragInfo, setDragInfo ] = useState<DragInfo>({ ...emptyDragInfo })
+	const [ eventHandleDragInfo, setEventHandleDragInfo ] = useState<EventHandleDragInfo>({ ...emptyEventHandleDragInfo })
 
-	const onSingleClick = (_event: React.MouseEvent<HTMLDivElement>) => {
-    setSelectedHandleIndex(-1)
-  }
+	const onTrackClick = (_position: Point) => {
+		setSelectedHandleIndex(-1)
+	}
 
-	const onDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
-		const { clientX } = event
-    const scrollLeft = (event.currentTarget as HTMLDivElement).parentElement?.parentElement?.parentElement?.scrollLeft || 0
-    const position = (clientX + scrollLeft) / (width * scale)
-		Logger.debug(`** Double clicked track`, clientX, scrollLeft, position)
+	const onTrackDoubleClick = (position: Point) => {
+		const { x } = position
 		store.dispatch(updateEvents({
 			timeline: store.getState().selectedTimeline || '',
 			track: name,
 			events: [
 				...events,
-				{ position, data: '' } as EventTrigger
+				{ position: x, data: '' } as EventTrigger
 			]
 		}))
 		onSave()
 	}
 
+	const onTrackDrag = (_start: Point, position: Point) => {
+		if (eventHandleDragInfo.index >= 0) {
+			onDragEventHandle(position);
+		}
+	}
+
+	const onTrackRelease = (position: Point) => {
+		if (eventHandleDragInfo.index >= 0) {
+			onReleaseEventHandle(position);
+		}
+	}
+
 	const onGrabEventHandle = (event: React.MouseEvent<HTMLDivElement>, index: number) => {
 		setSelectedHandleIndex(index)
-		const { pageX } = event
-    const scrollLeft = (event.currentTarget as HTMLDivElement).parentElement?.parentElement?.parentElement?.scrollLeft || 0
-    const position = (pageX + scrollLeft) / (width * scale)
-		Logger.debug(`*** Grabbed handle ${index}, pageX: ${pageX}, scrollLeft: ${scrollLeft}, position: ${position}`)
-    setDragInfo({
+		const { x } = getMouseEventPosition(event, width * scale, height)
+		const handlePosition = events[index].position
+    setEventHandleDragInfo({
       index,
-      startX: event.pageX,
-      offsetX: 0,
+			position: x,
+			grabOffset: handlePosition - x,
+			moved: false,
     })
 	}
 
-	const onDrag = (event: React.MouseEvent<HTMLDivElement>) => {
-		if (dragInfo.index < 0) return;
-		// const { startX } = dragInfo;
-		// setDragInfo({
-			// 	...dragInfo,
-			// 	offsetX: event.pageX - startX
-			// })
-
-		const { pageX } = event
-		const { startX } = dragInfo
-    const scrollLeft = (event.currentTarget as HTMLDivElement).parentElement?.parentElement?.parentElement?.scrollLeft || 0
-    const position = (pageX + scrollLeft) / (width * scale)
-		Logger.debug(`*** Dragged handle ${dragInfo.index}, pageX: ${pageX}, scrollLeft: ${scrollLeft}, position: ${position}`)
-		setDragInfo({
-      ...dragInfo,
-			offsetX: pageX - startX
+	const onDragEventHandle = (position: Point) => {
+		const { x } = position
+		setEventHandleDragInfo({
+      ...eventHandleDragInfo,
+			position: x,
+			moved: true,
     })
 	}
 
-	const stopDrag = () => {
-		if (dragInfo.index < 0) return;
-		if (dragInfo.offsetX === 0) {
-			setDragInfo({ ...emptyDragInfo })
+	const onReleaseEventHandle = (position: Point) => {
+		if (!eventHandleDragInfo.moved) {
+			setEventHandleDragInfo({ ...emptyEventHandleDragInfo })
 			return;
 		}
-		const { offsetX } = dragInfo
+		const { x } = position
 		store.dispatch(updateEvents({
 			timeline: store.getState().selectedTimeline || '',
 			track: name,
 			events: events.map((e, i) => (
-				i === dragInfo.index
-					? { ...e, position: e.position + (offsetX / (width * scale)) }
+				i === eventHandleDragInfo.index
+					? { ...e, position: x + eventHandleDragInfo.grabOffset }
 					: e
 			)).sort((a, b) => a.position - b.position)
 		}))
-		setDragInfo({ ...emptyDragInfo })
+		setEventHandleDragInfo({ ...emptyEventHandleDragInfo })
 		onSave()
 	}
 
-	const onRelease = (_event: React.MouseEvent<HTMLDivElement>) => {
-		stopDrag()
-	}
-
-	const onMouseLeave = () => {
-		const doSave = dragInfo.index > -1;
-		stopDrag();
-		if (doSave) {
-			onSave()
-		}
-	}
-
 	const onClickEventHandle = (index: number) => {
-		Logger.debug(`*** Clicked handle`, index);
 		// setSelectedHandleIndex(index === selectedHandleIndex ? -1 : index)
 		setSelectedEventData({ ...events[index] })
 	}
 
 	const onDoubleClickEventHandle = (index: number) => {
-		Logger.debug(`*** Double clicked handle`, index);
-		stopDrag();
 		// setSelectedHandleIndex(index === selectedHandleIndex ? -1 : index)
 		setSelectedEventData({ ...events[index] })
 		setShowEditDialog(true)
@@ -186,32 +171,17 @@ const EventsEditor: React.FC<TrackProps> = ({
 	}
 
 	return (
-		<div
-			className={styles.body}
-			onDoubleClick={onDoubleClick}
-			onMouseMove={onDrag}
-			onMouseUp={onRelease}
-			onMouseLeave={onMouseLeave}
-			style={{ width: `${width * scale}px`, height: `${height}px`, }}
+		<Editor
+			onTrackClick={onTrackClick}
+			onTrackDoubleClick={onTrackDoubleClick}
+			onTrackDrag={onTrackDrag}
+			onTrackRelease={onTrackRelease}
+			trackProps={props}
 		>
-			<div
-          className={ styles.bg }
-          style={{
-            background: `repeating-linear-gradient(
-              to right,
-              #ddd 0px,
-              #ddd 1px,
-              #eee 1px,
-              #eee ${pxPerSecond * scale}px
-            )`
-          }}
-          onClick={onSingleClick}
-        />
-        <div className={ styles.playhead } style={{ left: `${playPosition * width * scale}px` }} />
 			{ events.map(({ position, data }, index) => (
 				<EventHandle
 					key={index}
-					position={index === dragInfo.index ? position + (dragInfo.offsetX / (width * scale)) : position}
+					position={index === eventHandleDragInfo.index ? eventHandleDragInfo.position + eventHandleDragInfo.grabOffset : position}
 					data={data}
 					selected={index === selectedHandleIndex}
 					onMouseDown={e => onGrabEventHandle(e, index)}
@@ -257,7 +227,7 @@ const EventsEditor: React.FC<TrackProps> = ({
 					</IconButton>
 				</DialogActions>
 			</Dialog>
-		</div>
+		</Editor>
 	)
 }
 

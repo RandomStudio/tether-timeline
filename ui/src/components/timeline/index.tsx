@@ -190,7 +190,7 @@ class TimelineComponent extends React.Component<TimelineProps, TimelineState> {
             <ZoomInIcon />
           </div>
         </div>
-        <div className={ styles.scroller }>
+        <div className={ `${styles.scroller} scroll_container` }>
           <div className={ styles.tracks }>
             <TimeTrack
               width={duration * PX_PER_SECOND}
