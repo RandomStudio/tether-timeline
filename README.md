@@ -45,4 +45,4 @@ The web UI is built to and served up by the Rust application. To build it, run t
 npm run build
 ```
 
-This compiles the assets and places them in `app/public/`.
+This compiles the assets and places them in `app/public/`. When running the agent application, the UI will be accesible via a web browser, on port `8888` unless otherwise specified in the launch arguments.

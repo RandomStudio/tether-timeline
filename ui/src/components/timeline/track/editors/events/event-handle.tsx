@@ -5,6 +5,7 @@ import styles from 'styles/components/timeline/track.module.scss';
 
 interface EventHandleProps extends EventTrigger {
 	selected: boolean,
+	onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void,
 	onClick: () => void,
 	onDoubleClick: () => void,
 }
@@ -12,12 +13,14 @@ interface EventHandleProps extends EventTrigger {
 const EventHandle: React.FC<EventHandleProps> = ({
 	position,
 	selected,
+	onMouseDown,
 	onClick,
 	onDoubleClick,
 }) => (
 	<div
 		className={styles.event}
 		style={{ left: `${position * 100}%` }}
+		onMouseDown={onMouseDown}
 		onClick={onClick}
 		onDoubleClick={e => {
 			e.stopPropagation();
