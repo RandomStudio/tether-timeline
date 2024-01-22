@@ -1,3 +1,4 @@
+import { KeyboardContext } from '@/context/keyboard-context';
 import { store } from '@/redux/store';
 import { updateCurve } from '@/redux/timeline/slice';
 import { AnchorPoint, Point, TrackMode } from '@/redux/timeline/types';
@@ -17,7 +18,7 @@ import {
   OutlinedInput,
   Stack,
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useState } from 'react';
 import styles from 'styles/components/timeline/track.module.scss';
 
 import Editor, { getMouseEventPosition } from '.';
@@ -109,25 +110,12 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
 		return <></>
 	}
 
+	const keyboard = useContext(KeyboardContext)
+
   const [ selectedPointIndex, setSelectedPointIndex ] = useState(-1)
 	const [ showEditDialog, setShowEditDialog ] = useState(false)
 	const [ selectedAnchorPointData, setSelectedAnchorPointData ] = useState<AnchorPoint>(dummyAnchor)
   const [ pointDragInfo, setPointDragInfo ] = useState<PointDragInfo>({ ...emptyPointDragInfo })
-	const [ isShiftPressed, setIsShiftPressed ] = useState(false)
-
-	useEffect(() => {
-		window.addEventListener('keydown', onKey)
-		window.addEventListener('keyup', onKey)
-
-		return () => {
-			window.removeEventListener('keydown', onKey)
-			window.removeEventListener('keyup', onKey)
-		}
-	}, []);
-
-	const onKey = (e: KeyboardEvent) => {
-		setIsShiftPressed(e.shiftKey)
-	}
 
 	const onTrackClick = (_position: Point) => {
 		setSelectedPointIndex(-1)
@@ -138,23 +126,13 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
 		const lastBefore = getPointBefore(curve, x)
     const firstAfter = getPointAfter(curve, x)
 
-    let xy = { x, y }
-
-    // if (lastBefore && firstAfter) {
-    //   xy = lerpPoint(lastBefore.anchor, firstAfter.anchor, (x - lastBefore.anchor.x) / (firstAfter.anchor.x - lastBefore.anchor.x))
-    // } else if (!lastBefore && firstAfter) {
-    //   xy.y = firstAfter.anchor.y
-    // } else if (lastBefore && !firstAfter) {
-    //   xy.y = lastBefore.anchor.y
-    // }
-
     let c1 = {
-      x: Math.max(lastBefore ? lastBefore.anchor.x : 0, x - 0.125),
-      y: xy.y
+      x: Math.max(lastBefore ? lastBefore.anchor.x : 0, x - 0.02),
+      y
     }
     let c2 = {
-      x: Math.min(firstAfter ? firstAfter.anchor.x : 1, x + 0.125),
-      y: xy.y
+      x: Math.min(firstAfter ? firstAfter.anchor.x : 1, x + 0.02),
+      y
     }
 
     store.dispatch(updateCurve({
@@ -162,7 +140,7 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
       track: name,
       curve: [
         ...curve,
-        { anchor: xy, control_1: c1, control_2: c2 }
+        { anchor: position, control_1: c1, control_2: c2 }
       ].sort((a, b) => a.anchor.x - b.anchor.x)
     }))
 		onSave()
@@ -237,63 +215,25 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
 							return {
 								anchor,
 								control_1: position,
-								control_2: isShiftPressed
+								control_2: keyboard.isShiftKeyPressed
 									? getMirroredControlPoint(anchor, position)
 									: control_2,
 							}
 						case PointDragType.CONTROL_2:
 							return {
 								anchor,
-								control_1: isShiftPressed
+								control_1: keyboard.isShiftKeyPressed
 									? getMirroredControlPoint(anchor, position)
 									: control_1,
 								control_2: position,
 							}
 					}
-          // const p = type === DragPointType.ANCHOR
-          //   ? {
-          //     x: clamp(
-          //       position.x,
-          //       prevPoint?.anchor.x || 0,
-          //       nextPoint?.anchor.x || 1
-          //     ),
-          //     y: position.y
-          //   }
-          //   : anchor
-          // const c1 = type === DragPointType.CONTROL_1
-          //   ? position
-          //   : type === DragPointType.CONTROL_2 && isShiftPressed
-					// 		?	getMirroredControlPoint(anchor, position)
-					// 		: {
-					// 			x: p.x + (control_1.x - anchor.x),
-					// 			y: p.y + (control_1.y - anchor.y),
-					// 		}
-          // const c2 = type === DragPointType.CONTROL_2
-          //   ? {
-          //     x: control_2.x + (offsetX / (width * scale)),
-          //     y: control_2.y - (offsetY / height)
-          //   }
-          //   : type === DragPointType.CONTROL_1 && isShiftPressed
-					// 	?	getMirroredControlPoint(
-					// 			anchor,
-					// 			{ x: control_1.x + (offsetX / (width * scale)), y: control_1.y - (offsetY / height) }
-					// 		)
-					// 	: {
-					// 			x: p.x + (control_2.x - anchor.x),
-					// 			y: p.y + (control_2.y - anchor.y),
-					// 		}
-          // return {
-          //   anchor: p,
-          //   control_1: c1,
-          //   control_2: c2
-          // }
         } else {
           return { anchor, control_1, control_2 }
         }
       })
     }))
     setPointDragInfo({ ...emptyPointDragInfo })
-		// onSave()
   }
 
 	const onReleasePoint = () => {
@@ -431,12 +371,12 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
             anchor,
             control_1: pointDragInfo.type === PointDragType.CONTROL_1
               ? { x: control_1.x + delta.x, y: control_1.y + delta.y }
-              : pointDragInfo.type === PointDragType.CONTROL_2 && isShiftPressed
+              : pointDragInfo.type === PointDragType.CONTROL_2 && keyboard.isShiftKeyPressed
 								? getMirroredControlPoint(anchor, { x: control_2.x + delta.x, y: control_2.y + delta.y })
 								: control_1,
             control_2: pointDragInfo.type === PointDragType.CONTROL_2
               ? { x: control_2.x + delta.x, y: control_2.y + delta.y }
-              : pointDragInfo.type === PointDragType.CONTROL_1 && isShiftPressed
+              : pointDragInfo.type === PointDragType.CONTROL_1 && keyboard.isShiftKeyPressed
 							? getMirroredControlPoint(anchor, { x: control_1.x + delta.x, y: control_1.y + delta.y })
 							: control_2,
           }

@@ -21,11 +21,12 @@ import {
   Stack,
 } from '@mui/material';
 import { Output } from '@randomstudio/tether';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import styles from 'styles/app.module.scss';
 
 import TimelineComponent from './components/timeline';
+import { KeyboardContext, ModifierKeys } from './context/keyboard-context';
 import { RootState, store } from './redux/store';
 import { addTimeline, removeTimeline, renameTimeline, selectTimeline } from './redux/timeline/slice';
 import Logger from './utils/logger';
@@ -48,8 +49,11 @@ const App: React.FC<AppProps> = ({
   const { timelines, selectedTimeline } = useSelector((state: RootState) => state)
   const timeline = timelines.find(t => t.name === selectedTimeline)
 
-  const nameRef = useRef(null)
-
+	const [ modifierKeys, setModifierKeys ] = useState<ModifierKeys>({
+		isAltKeyPressed: false,
+		isCtrlKeyPressed: false,
+		isShiftKeyPressed: false,
+	})
   const [ isEditingName, setIsEditingName ] = useState(false)
   const [ editableName, setEditableName ] = useState(timeline?.name || "")
 	const [ isAddingTimeline, setIsAddingTimeline ] = useState(false)
@@ -58,7 +62,26 @@ const App: React.FC<AppProps> = ({
 	const [ addTimelineFps, setAddTimelineFps ] = useState(60)
 	const [ addTimelineLoop, setAddTimelineLoop ] = useState(true)
 
+	const nameRef = useRef(null)
   const timelineRef = useRef<typeof TimelineComponent>(null!)
+
+	useEffect(() => {
+		window.addEventListener('keydown', onKey)
+		window.addEventListener('keyup', onKey)
+
+		return () => {
+			window.removeEventListener('keydown', onKey)
+			window.removeEventListener('keyup', onKey)
+		}
+	}, [])
+
+	const onKey = (e: KeyboardEvent) => {
+		setModifierKeys({
+			isAltKeyPressed: e.altKey,
+			isCtrlKeyPressed: e.ctrlKey,
+			isShiftKeyPressed: e.shiftKey,
+		})
+	}
 
   const deleteTimeline = () => {
 		if (selectedTimeline !== null) {
@@ -132,115 +155,117 @@ const App: React.FC<AppProps> = ({
 	}
 
   return (
-    <div className={ styles.app }>
-      <div className={ styles['app-controls'] }>
-        { !isEditingName && (
-          <>
-            <Select
-              size="small"
-              value={selectedTimeline}
-              label="Sequence"
-              onChange={e => setSelectedTimeline(e.target.value as string)}
-            >
-              { timelines.map(({ name }) => (
-                <MenuItem key={name} value={name}>{ name }</MenuItem>
-              ))}
-            </Select>
-            <Button size="small" variant="outlined" onClick={editName}>
-              <EditIcon />
-            </Button>
-            <Button size="small" variant="outlined" onClick={onAddTimeline}>
-              <AddIcon />
-            </Button>
-            <Button size="small" variant="outlined" onClick={deleteTimeline} disabled={timelines.length < 2}>
-              <DeleteOutlineIcon />
-            </Button>
-          </>
-        )}
-        { isEditingName && (
-          <>
-            <FormControl variant="standard" size="small">
-              <OutlinedInput
-                type="text"
-                ref={nameRef}
-                size="small"
-                style={{ margin: '0.5em' }}
-                value={editableName}
-                onChange={ e => setEditableName(e.target.value) }
-              />
-            </FormControl>
-            <Button size="small" variant="outlined" onClick={() => confirmName()}>
-              <CheckIcon />
-            </Button>
-            <Button size="small" variant="outlined" onClick={() => setIsEditingName(false)}>
-              <CloseIcon />
-            </Button>
-          </>
-        )}
-      </div>
-      { timeline && (
-        <TimelineComponent
-          // @ts-ignore
-          ref={timelineRef}
-          style={{ flexGrow: 10 }}
-          timeline={timeline}
-					onChange={onChangeTimeline}
-					onPlay={onPlayTimeline}
-					onPause={onPauseTimeline}
-					onSeek={onSeekTimeline}
-        />
-      )}
-			<Dialog open={isAddingTimeline}>
-				<DialogTitle>Create a new timeline</DialogTitle>
-				<DialogContent>
-					<Stack direction="column" spacing={'1em'} sx={{ marginTop: '0.5em' }}>
-					<FormControl>
-						<InputLabel htmlFor="form-item-name">Name</InputLabel>
-						<OutlinedInput
-							id="form-item-name"
-							defaultValue={addTimelineName}
-							label="Name"
-							onChange={e => setAddTimelineName(e.target.value)}
-						/>
-					</FormControl>
-					<FormControl>
-						<InputLabel htmlFor="form-item-duration">Duration</InputLabel>
-						<OutlinedInput
-							id="form-item-duration"
-							type="number"
-							defaultValue={addTimelineDuration}
-							endAdornment={<InputAdornment position="end">seconds</InputAdornment>}
-							label="Duration"
-							onChange={e => setAddTimelineDuration(Number(e.target.value))}
-						/>
-					</FormControl>
-					<FormControl>
-						<InputLabel htmlFor="form-item-fps">Framerate</InputLabel>
-						<OutlinedInput
-							id="form-item-fps"
-							type="number"
-							defaultValue={addTimelineFps}
-							endAdornment={<InputAdornment position="end">fps</InputAdornment>}
-							label="Framerate"
-							onChange={e => setAddTimelineFps(Math.floor(Number(e.target.value)))}
-						/>
-					</FormControl>
-					<FormControlLabel
-              control={<Checkbox onChange ={e => setAddTimelineLoop(e.target.checked)} />}
-              label="Loop"
-            />
-					</Stack>
-				</DialogContent>
-				<DialogActions>
-					<Button startIcon={<CloseIcon />} onClick={() => setIsAddingTimeline(false)}>
-						Cancel
-					</Button>
-					<Button startIcon={<CheckIcon />} onClick={onConfirmAddTimeline}>
-						Save
-					</Button>
-				</DialogActions>
-			</Dialog>
-    </div>
+		<KeyboardContext.Provider value={modifierKeys}>
+			<div className={ styles.app }>
+				<div className={ styles['app-controls'] }>
+					{ !isEditingName && (
+						<>
+							<Select
+								size="small"
+								value={selectedTimeline}
+								label="Sequence"
+								onChange={e => setSelectedTimeline(e.target.value as string)}
+							>
+								{ timelines.map(({ name }) => (
+									<MenuItem key={name} value={name}>{ name }</MenuItem>
+								))}
+							</Select>
+							<Button size="small" variant="outlined" onClick={editName}>
+								<EditIcon />
+							</Button>
+							<Button size="small" variant="outlined" onClick={onAddTimeline}>
+								<AddIcon />
+							</Button>
+							<Button size="small" variant="outlined" onClick={deleteTimeline} disabled={timelines.length < 2}>
+								<DeleteOutlineIcon />
+							</Button>
+						</>
+					)}
+					{ isEditingName && (
+						<>
+							<FormControl variant="standard" size="small">
+								<OutlinedInput
+									type="text"
+									ref={nameRef}
+									size="small"
+									style={{ margin: '0.5em' }}
+									value={editableName}
+									onChange={ e => setEditableName(e.target.value) }
+								/>
+							</FormControl>
+							<Button size="small" variant="outlined" onClick={() => confirmName()}>
+								<CheckIcon />
+							</Button>
+							<Button size="small" variant="outlined" onClick={() => setIsEditingName(false)}>
+								<CloseIcon />
+							</Button>
+						</>
+					)}
+				</div>
+				{ timeline && (
+					<TimelineComponent
+						// @ts-ignore
+						ref={timelineRef}
+						style={{ flexGrow: 10 }}
+						timeline={timeline}
+						onChange={onChangeTimeline}
+						onPlay={onPlayTimeline}
+						onPause={onPauseTimeline}
+						onSeek={onSeekTimeline}
+					/>
+				)}
+				<Dialog open={isAddingTimeline}>
+					<DialogTitle>Create a new timeline</DialogTitle>
+					<DialogContent>
+						<Stack direction="column" spacing={'1em'} sx={{ marginTop: '0.5em' }}>
+						<FormControl>
+							<InputLabel htmlFor="form-item-name">Name</InputLabel>
+							<OutlinedInput
+								id="form-item-name"
+								defaultValue={addTimelineName}
+								label="Name"
+								onChange={e => setAddTimelineName(e.target.value)}
+							/>
+						</FormControl>
+						<FormControl>
+							<InputLabel htmlFor="form-item-duration">Duration</InputLabel>
+							<OutlinedInput
+								id="form-item-duration"
+								type="number"
+								defaultValue={addTimelineDuration}
+								endAdornment={<InputAdornment position="end">seconds</InputAdornment>}
+								label="Duration"
+								onChange={e => setAddTimelineDuration(Number(e.target.value))}
+							/>
+						</FormControl>
+						<FormControl>
+							<InputLabel htmlFor="form-item-fps">Framerate</InputLabel>
+							<OutlinedInput
+								id="form-item-fps"
+								type="number"
+								defaultValue={addTimelineFps}
+								endAdornment={<InputAdornment position="end">fps</InputAdornment>}
+								label="Framerate"
+								onChange={e => setAddTimelineFps(Math.floor(Number(e.target.value)))}
+							/>
+						</FormControl>
+						<FormControlLabel
+								control={<Checkbox onChange ={e => setAddTimelineLoop(e.target.checked)} />}
+								label="Loop"
+							/>
+						</Stack>
+					</DialogContent>
+					<DialogActions>
+						<Button startIcon={<CloseIcon />} onClick={() => setIsAddingTimeline(false)}>
+							Cancel
+						</Button>
+						<Button startIcon={<CheckIcon />} onClick={onConfirmAddTimeline}>
+							Save
+						</Button>
+					</DialogActions>
+				</Dialog>
+			</div>
+		</KeyboardContext.Provider>
   )
 }
 

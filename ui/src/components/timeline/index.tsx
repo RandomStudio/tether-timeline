@@ -42,6 +42,7 @@ export interface TimelineProps {
 	onSeek: (position: number) => void,
 }
 
+
 export interface TimelineState {
   scale: number
   largeTrackHeight: boolean
