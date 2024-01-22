@@ -81,8 +81,12 @@ class TimelineComponent extends React.Component<TimelineProps, TimelineState> {
     this.setState({ largeTrackHeight: !largeTrackHeight })
   }
 
-  setScale = (_event: Event, scale: number | number[]) => {
-    this.setState({ scale: Array.isArray(scale) ? scale[0] : scale })
+  setScale = (scale: number) => {
+    this.setState({ scale: Math.max(0, scale) })
+  }
+
+	updateScaleSlider = (_event: Event, scale: number | number[]) => {
+    this.setScale(Array.isArray(scale) ? scale[0] : scale)
   }
 
   addTrack = () => {
@@ -177,18 +181,18 @@ class TimelineComponent extends React.Component<TimelineProps, TimelineState> {
             <Button size="small" variant="contained" style={{ marginRight: '1em' }} onClick={this.toggleLargeTrackHeight}>
               { largeTrackHeight ? <UnfoldLessIcon /> : <UnfoldMoreIcon /> }
             </Button>
-            <ZoomOutIcon />
+            <ZoomOutIcon onClick={() => this.setScale(Math.max(0, this.state.scale - 0.1))} />
             <Slider
               size="small"
               value={scale}
               min={0.01}
-              max={2.0}
+              max={8.0}
               step={0.01}
-              onChange={this.setScale}
+              onChange={this.updateScaleSlider}
               style={{ width: '200px' }}
               valueLabelDisplay="auto"
             />
-            <ZoomInIcon />
+            <ZoomInIcon onClick={() => this.setScale(Math.min(8, this.state.scale + 0.1))} />
           </div>
         </div>
         <div className={ `${styles.scroller} scroll_container` }>

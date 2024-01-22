@@ -392,6 +392,10 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
 
   const playY = calculateValue(currentCurve, playPosition)
 
+	const onKeyDown = (_key: string) => {
+		//
+	}
+
   return (
 		<Editor
 			showDragRect={false}
@@ -400,6 +404,7 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
 			onTrackPress={onTrackPress}
 			onTrackDrag={onTrackDrag}
 			onTrackRelease={onTrackRelease}
+			onKeyDown={onKeyDown}
 			trackProps={props}
 		>
 			<svg

@@ -1,3 +1,4 @@
+import { KeyboardContext } from '@/context/keyboard-context';
 import { store } from '@/redux/store';
 import { updateEvents } from '@/redux/timeline/slice';
 import { EventTrigger, Point, TrackMode } from '@/redux/timeline/types';
@@ -17,7 +18,7 @@ import {
   OutlinedInput,
   Stack,
 } from '@mui/material';
-import React, { useState } from 'react';
+import React, { useCallback, useContext, useState } from 'react';
 
 import { TrackProps } from '../..';
 import Editor, { getMouseEventPosition } from '../editor';
@@ -54,7 +55,7 @@ const EventsEditor: React.FC<TrackProps> = (props: TrackProps) => {
 		return <></>
 	}
 
-	// const keyboard = useContext(KeyboardContext)
+	const keyboard = useContext(KeyboardContext)
 
 	const [ selectedIndices, setSelectedIndices ] = useState<Array<number>>([])
 	const [ showEditDialog, setShowEditDialog ] = useState(false)
@@ -110,11 +111,11 @@ const EventsEditor: React.FC<TrackProps> = (props: TrackProps) => {
 
 	const onGrabEventHandle = (event: React.MouseEvent<HTMLDivElement>, index: number) => {
 		if (!selectedIndices.includes(index)) {
-			// if (keyboard.isShiftKeyPressed) {
-			// 	setSelectedIndices([ ...selectedIndices, index ])
-			// } else {
+			if (keyboard.isShiftKeyPressed) {
+				setSelectedIndices([ ...selectedIndices, index ])
+			} else {
 				setSelectedIndices([index])
-			// }
+			}
 		}
 		// indicate that we're not dragging a selection box, but moving handles instead
 		setIsMultiSelecting(false)
@@ -205,6 +206,14 @@ const EventsEditor: React.FC<TrackProps> = (props: TrackProps) => {
 		setShowEditDialog(false)
 	}
 
+	const onKeyDown = useCallback((key: string) => {
+		if (key.toLowerCase() == "delete" || key.toLowerCase() == "backspace") {
+			if (selectedIndices.length) {
+				onDeleteEvent()
+			}
+		}
+	}, [selectedIndices])
+
 	return (
 		<Editor
 			showDragRect={isMultiSelecting}
@@ -213,6 +222,7 @@ const EventsEditor: React.FC<TrackProps> = (props: TrackProps) => {
 			onTrackPress={onTrackPress}
 			onTrackDrag={onTrackDrag}
 			onTrackRelease={onTrackRelease}
+			onKeyDown={onKeyDown}
 			trackProps={props}
 		>
 			{ events.map(({ position, data }, index) => (

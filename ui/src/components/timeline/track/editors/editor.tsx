@@ -1,5 +1,5 @@
 import { Point } from '@/redux/timeline/types';
-import { FC, MouseEvent, PropsWithChildren, useState } from 'react';
+import { FC, MouseEvent, PropsWithChildren, useEffect, useState } from 'react';
 import styles from 'styles/components/timeline/track.module.scss';
 
 import { TrackProps } from '..';
@@ -25,6 +25,7 @@ interface EditorProps extends PropsWithChildren {
 	onTrackPress: (position: Point) => void,
 	onTrackDrag: (start: Point, position: Point) => void,
 	onTrackRelease: (position: Point) => void,
+	onKeyDown?: (key: string) => void,
 }
 
 const Editor: FC<EditorProps> = ({
@@ -35,6 +36,7 @@ const Editor: FC<EditorProps> = ({
 	onTrackPress,
 	onTrackDrag,
 	onTrackRelease,
+	onKeyDown,
 	children,
 }) => {
 
@@ -49,6 +51,21 @@ const Editor: FC<EditorProps> = ({
 	const [ isDragging, setIsDragging ] = useState(false)
 	const [ dragStart, setDragStart ] = useState<Point>({ x: 0, y: 0 })
 	const [ dragPosition, setDragPosition ] = useState<Point>({ x: 0, y: 0 })
+
+	useEffect(() => {
+		if (onKeyDown) {
+			window.addEventListener('keydown', handleKeyDown)
+			return () => {
+				window.removeEventListener('keydown', handleKeyDown)
+			}
+		}
+	}, [onKeyDown])
+
+	const handleKeyDown = (event: KeyboardEvent) => {
+		if (onKeyDown) {
+			onKeyDown(event.key)
+		}
+	}
 
 	const handleSingleClick = (event: MouseEvent<HTMLDivElement>) => {
 		onTrackClick(getMouseEventPosition(event, width * scale, height))
