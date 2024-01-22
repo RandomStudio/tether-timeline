@@ -21,9 +21,9 @@ import {
 import React, { useContext, useState } from 'react';
 import styles from 'styles/components/timeline/track.module.scss';
 
-import Editor, { getMouseEventPosition } from '.';
 import { TrackProps } from '..';
 import { cubicBezier, findTForX } from '../../../../utils/bezier-helper';
+import Editor, { getMouseEventPosition } from './editor';
 
 enum PointDragType {
   ANCHOR,
@@ -118,6 +118,9 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
   const [ pointDragInfo, setPointDragInfo ] = useState<PointDragInfo>({ ...emptyPointDragInfo })
 
 	const onTrackClick = (_position: Point) => {
+	}
+
+	const onTrackPress = (_position: Point) => {
 		setSelectedPointIndex(-1)
 	}
 
@@ -391,8 +394,10 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
 
   return (
 		<Editor
+			showDragRect={false}
 			onTrackClick={onTrackClick}
 			onTrackDoubleClick={onTrackDoubleClick}
+			onTrackPress={onTrackPress}
 			onTrackDrag={onTrackDrag}
 			onTrackRelease={onTrackRelease}
 			trackProps={props}

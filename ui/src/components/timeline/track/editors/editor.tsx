@@ -19,16 +19,20 @@ export const getMouseEventPosition = (event: MouseEvent<HTMLDivElement | SVGElem
 
 interface EditorProps extends PropsWithChildren {
 	trackProps: TrackProps,
+	showDragRect: boolean,
 	onTrackClick: (position: Point) => void,
 	onTrackDoubleClick: (position: Point) => void,
+	onTrackPress: (position: Point) => void,
 	onTrackDrag: (start: Point, position: Point) => void,
 	onTrackRelease: (position: Point) => void,
 }
 
 const Editor: FC<EditorProps> = ({
 	trackProps,
+	showDragRect,
 	onTrackClick,
 	onTrackDoubleClick,
+	onTrackPress,
 	onTrackDrag,
 	onTrackRelease,
 	children,
@@ -52,6 +56,11 @@ const Editor: FC<EditorProps> = ({
 
   const handleDoubleClick = (event: MouseEvent<HTMLDivElement>) => {
 		onTrackDoubleClick(getMouseEventPosition(event, width * scale, height))
+	}
+
+	const onMouseDownBg = (event: MouseEvent<HTMLDivElement>) => {
+		const position = getMouseEventPosition(event, width * scale, height)
+		onTrackPress(position)
 	}
 
 	const onMouseDown = (event: MouseEvent<HTMLDivElement>) => {
@@ -103,8 +112,21 @@ const Editor: FC<EditorProps> = ({
 						#eee ${pxPerSecond * scale}px
 					)`
 				}}
+				onMouseDown={onMouseDownBg}
 				onClick={handleSingleClick}
-			/>
+			>
+				{ showDragRect && (
+					<div
+						className={ styles.dragRect }
+						style={{
+							left: `${Math.min(dragStart.x, dragPosition.x) * width * scale}px`,
+							top: `${Math.min(dragStart.y, dragPosition.y) * height}px`,
+							width: `${Math.abs(dragPosition.x - dragStart.x) * width * scale}px`,
+							height: `${Math.abs(dragPosition.y - dragStart.y) * height}px`,
+						}}
+					/>
+				)}
+			</div>
 			<div className={ styles.playhead } style={{ left: `${playPosition * width * scale}px` }} />
 			{ children }
 		</div>
