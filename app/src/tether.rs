@@ -227,9 +227,9 @@ impl Tether {
         }
     }
 
-    fn publish_timeline_snapshot(&self, data: &TimelineSnapshot) {
+    fn publish_timeline_snapshot(&self, timeline: &TimelineSnapshot) {
         // publish timeline update message
-        match to_vec_named(data) {
+        match to_vec_named(timeline) {
             Ok(payload) => match self.agent.publish(&self.output_update, Some(&payload)) {
                 Ok(()) => {
                     debug!("Published timeline data to Tether: {:?}", &payload);
@@ -242,15 +242,17 @@ impl Tether {
                 error!("Could not encode timeline data payload. {}", err);
             }
         }
-        if data.is_playing {
+        if timeline.is_playing {
             // for each event that has occurred in each track in this update, publish a separate message as well
-            data.tracks.iter().for_each(|track| {
+            timeline.tracks.iter().for_each(|track| {
                 if let Some(events) = &track.events {
                     events.iter().for_each(|event| {
                         self.publish_event(&EventSnapshot {
-                            timeline: data.name.clone(),
+                            timeline: timeline.name.clone(),
                             track: track.name.clone(),
-                            data: event.clone(),
+                            position: event.position,
+                            time: event.position * timeline.duration,
+                            data: event.data.clone(),
                         });
                     });
                 }

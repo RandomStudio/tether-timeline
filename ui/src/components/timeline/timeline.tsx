@@ -29,8 +29,8 @@ import styles from 'styles/components/timeline/timeline.module.scss';
 import { store } from '../../redux/store';
 import { addTrack, updateTimeline } from '../../redux/timeline/slice';
 import { Timeline } from '../../redux/timeline/types';
-import TimeTrack from './timetrack';
-import TrackComponent from './track';
+import TimeTrack from './timetrack/timetrack';
+import TrackComponent from './track/track';
 
 const PX_PER_SECOND = 50
 

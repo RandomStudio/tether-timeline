@@ -18,11 +18,12 @@ import {
   OutlinedInput,
   Stack,
 } from '@mui/material';
-import React, { useContext, useState } from 'react';
+import React, { useCallback, useContext, useState } from 'react';
 import styles from 'styles/components/timeline/track.module.scss';
+import { v4 as uuidv4 } from 'uuid';
 
-import { TrackProps } from '..';
 import { cubicBezier, findTForX } from '../../../../utils/bezier-helper';
+import { TrackProps } from '../track';
 import Editor, { getMouseEventPosition } from './editor';
 
 enum PointDragType {
@@ -66,23 +67,26 @@ const clamp = (a: number, min: number, max: number) => (
 //   y: lerp(a.y, b.y, factor)
 // })
 
-const getPointBefore = (curve: AnchorPoint[], position: number): AnchorPoint => {
+const getPointBefore = (curve: AnchorPoint[] | null, position: number): AnchorPoint | null => {
+	if (!curve || !curve.length) return null
   const allBefore: AnchorPoint[] = curve.filter(p => p.anchor.x < position)
   return allBefore.length
     ? allBefore.sort((a, b) => a.anchor.x - b.anchor.x).pop()!
     : curve[0]
 }
 
-const getPointAfter = (curve: AnchorPoint[], position: number): AnchorPoint => {
+const getPointAfter = (curve: AnchorPoint[] | null, position: number): AnchorPoint | null => {
+	if (!curve || !curve.length) return null
   const allBefore: AnchorPoint[] = curve.filter(p => p.anchor.x > position)
   return allBefore.length
     ? allBefore.sort((a, b) => a.anchor.x - b.anchor.x).shift()!
     : curve[curve.length - 1]
 }
 
-export const calculateValue = (curve: AnchorPoint[], position: number) => {
+export const calculateValue = (curve: AnchorPoint[] | null, position: number) => {
   const prev = getPointBefore(curve, position)
   const next = getPointAfter(curve, position)
+	if (!prev || !next) return 0
   // const t = (position - prev.point.x) / (next.point.x - prev.point.x)
   const t = findTForX(prev.anchor.x, prev.control_2.x, next.control_1.x, next.anchor.x, position, 0.0001)
   return cubicBezier(prev.anchor, prev.control_2, next.control_1, next.anchor, t).y
@@ -94,7 +98,7 @@ const dummyAnchor = {
 	control_2: { x: -1, y: -1 }
 } as AnchorPoint
 
-const CurveEditor: React.FC<TrackProps> = (props) => {
+const CurveEditor = (props: TrackProps) => {
 
 	const {
 		width,
@@ -106,10 +110,6 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
 		onSave,
 	} = props
 
-	if (mode !== TrackMode.Curve || !curve || !curve.length) {
-		return <></>
-	}
-
 	const keyboard = useContext(KeyboardContext)
 
   const [ selectedPointIndex, setSelectedPointIndex ] = useState(-1)
@@ -118,6 +118,7 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
   const [ pointDragInfo, setPointDragInfo ] = useState<PointDragInfo>({ ...emptyPointDragInfo })
 
 	const onTrackClick = (_position: Point) => {
+
 	}
 
 	const onTrackPress = (_position: Point) => {
@@ -129,22 +130,23 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
 		const lastBefore = getPointBefore(curve, x)
     const firstAfter = getPointAfter(curve, x)
 
-    let c1 = {
+    const c1 = {
       x: Math.max(lastBefore ? lastBefore.anchor.x : 0, x - 0.02),
       y
     }
-    let c2 = {
+    const c2 = {
       x: Math.min(firstAfter ? firstAfter.anchor.x : 1, x + 0.02),
       y
     }
 
+		const pt: AnchorPoint = { id: uuidv4(), anchor: position, control_1: c1, control_2: c2 }
     store.dispatch(updateCurve({
 			timeline: store.getState().selectedTimeline || '',
       track: name,
-      curve: [
+      curve: curve && curve.length ? [
         ...curve,
-        { anchor: position, control_1: c1, control_2: c2 }
-      ].sort((a, b) => a.anchor.x - b.anchor.x)
+        pt
+      ].sort((a, b) => a.anchor.x - b.anchor.x) : [ pt ]
     }))
 		onSave()
 	}
@@ -162,6 +164,7 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
 	}
 
   const onGrabPoint = (event: React.MouseEvent<SVGCircleElement>, index: number, type: PointDragType) => {
+		if (!curve || index >= curve.length) return
     setSelectedPointIndex(index)
     const { anchor } = curve[index]
 		const position = getMouseEventPosition(event, width * scale, height)
@@ -185,6 +188,7 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
 
   const onDragPoint = (position: Point) => {
 		const { index, minPosition, maxPosition, type } = pointDragInfo
+		if (!curve || index >= curve.length) return
 		const { anchor, control_1, control_2 } = curve[index]
 		const allowHDrag = type !== PointDragType.ANCHOR || (index > 0 && index < curve.length - 1)
 		const { x } = (type === PointDragType.ANCHOR ? anchor : (type === PointDragType.CONTROL_1 ? control_1 : control_2));
@@ -200,22 +204,25 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
   }
 
 	const stopDrag = () => {
-    const {index, start, position, type } = pointDragInfo;
+    const { index, start, position, type } = pointDragInfo;
+		if (!curve || index >= curve.length) return
 		const delta = { x: position.x - start.x, y: position.y - start.y }
     store.dispatch(updateCurve({
 			timeline: store.getState().selectedTimeline || '',
       track: name,
-      curve: curve.map(({ anchor, control_1, control_2 }, i) => {
+      curve: curve.map(({ id, anchor, control_1, control_2 }, i) => {
         if (i === index) {
 					switch (type) {
 						case PointDragType.ANCHOR:
 							return {
+								id,
 								anchor: position,
 								control_1: { x: control_1.x + delta.x, y: control_1.y + delta.y },
 								control_2: { x: control_2.x + delta.x, y: control_2.y + delta.y },
 							}
 						case PointDragType.CONTROL_1:
 							return {
+								id,
 								anchor,
 								control_1: position,
 								control_2: keyboard.isShiftKeyPressed
@@ -224,6 +231,7 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
 							}
 						case PointDragType.CONTROL_2:
 							return {
+								id,
 								anchor,
 								control_1: keyboard.isShiftKeyPressed
 									? getMirroredControlPoint(anchor, position)
@@ -232,7 +240,7 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
 							}
 					}
         } else {
-          return { anchor, control_1, control_2 }
+          return { id, anchor, control_1, control_2 }
         }
       })
     }))
@@ -245,8 +253,10 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
 	}
 
 	const onDoubleClickAnchorPoint = (index: number) => {
+		if (!curve || index >= curve.length) return
 		setSelectedPointIndex(index)
 		setSelectedAnchorPointData({
+			id: curve[index].id,
 			anchor: { ...curve[index].anchor },
 			control_1: { ...curve[index].control_1 },
 			control_2: { ...curve[index].control_2 },
@@ -276,7 +286,7 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
 		})
 	}
 
-	const onConfirmEditAnchorPoint = () => {
+	const onConfirmEditAnchorPoint = useCallback(() => {
 		if (selectedPointIndex == -1) {
 			deselectAnchorPoint()
 			return
@@ -285,18 +295,18 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
 		store.dispatch(updateCurve({
 			timeline: store.getState().selectedTimeline || '',
       track: name,
-			curve: curve.map((c, i) => (
+			curve: curve?.map((c, i) => (
 				i === selectedPointIndex ? {
 					...selectedAnchorPointData
 				} : c
-			)).sort((a, b) => a.anchor.x - b.anchor.x)
+			)).sort((a, b) => a.anchor.x - b.anchor.x) || []
     }))
 
 		onSave()
 		deselectAnchorPoint()
-	}
+	}, [curve, name, onSave, selectedAnchorPointData, selectedPointIndex])
 
-	const onDeleteAnchorPoint = () => {
+	const onDeleteAnchorPoint = useCallback(() => {
 		if (selectedPointIndex == -1) {
 			deselectAnchorPoint()
 			return
@@ -305,18 +315,33 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
     store.dispatch(updateCurve({
 			timeline: store.getState().selectedTimeline || '',
       track: name,
-      curve: curve.filter((_p, i) => i !== selectedPointIndex),
+      curve: curve?.filter((_p, i) => i !== selectedPointIndex) || [],
     }))
 
 		onSave()
     deselectAnchorPoint()
-	}
+	}, [curve, name, onSave, selectedPointIndex]);
 
 	const deselectAnchorPoint = () => {
 		setSelectedPointIndex(-1)
 		setSelectedAnchorPointData(dummyAnchor)
 		setShowEditDialog(false)
 	}
+
+	const onKeyDown = useCallback((key: string) => {
+		switch (key.toLowerCase()) {
+			case "delete":
+			case "backspace":
+				if (!showEditDialog && selectedPointIndex > -1) {
+					onDeleteAnchorPoint()
+				}
+				break
+			case "enter":
+				if (showEditDialog) {
+					onConfirmEditAnchorPoint()
+				}
+		}
+	}, [showEditDialog, selectedPointIndex, onDeleteAnchorPoint, onConfirmEditAnchorPoint])
 
   /**
    * Create an SVG path from a list of normalized anchors and control points, and the size
@@ -326,7 +351,7 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
    * @param height Destination area height
    * @returns String representation of the corresponding SVG path
    */
-  const createPath = (points: AnchorPoint[], width: number, height: number): string => {
+  const createPath = (points: AnchorPoint[] | null, width: number, height: number): string => {
 
     // turn normalized positions into concrete coordinates
     const calcPos = (p: Point): Point => ({
@@ -335,7 +360,7 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
     })
 
     // Work out the full path in sections between two points, via their respective control points
-    return points.reduce((path, { anchor, control_1 }, i, arr) => {
+    return (points || []).reduce((path, { anchor, control_1 }, i, arr) => {
       const p = calcPos(anchor)
       const cc = calcPos(control_1)
 
@@ -358,19 +383,21 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
   // Define the current curve by applying any offsets that are the result of dragging anchor or control points
   const currentCurve = pointDragInfo.index < 0
     ? curve
-    : curve.map((v, i) => {
+    : curve?.map((v, i) => {
 			const { index, start, position } = pointDragInfo
 			const delta = { x: position.x - start.x, y: position.y - start.y }
       if (i === index) {
-        const { anchor, control_1, control_2 } = v
+        const { id, anchor, control_1, control_2 } = v
         if (pointDragInfo.type === PointDragType.ANCHOR) {
           return {
+						id,
             anchor: pointDragInfo.position,
             control_1: { x: control_1.x + delta.x, y: control_1.y + delta.y },
             control_2: { x: control_2.x + delta.x, y: control_2.y + delta.y },
           }
         } else {
           return {
+						id,
             anchor,
             control_1: pointDragInfo.type === PointDragType.CONTROL_1
               ? { x: control_1.x + delta.x, y: control_1.y + delta.y }
@@ -388,15 +415,16 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
         return v
       }
     }
-  )
+  ) || []
 
   const playY = calculateValue(currentCurve, playPosition)
 
-	const onKeyDown = (_key: string) => {
-		//
+	if (mode !== TrackMode.Curve || !curve || !curve.length) {
+		return <></>
 	}
 
   return (
+		<>
 		<Editor
 			showDragRect={false}
 			onTrackClick={onTrackClick}
@@ -425,8 +453,8 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
 						className={styles.curvePath}
 						d={createPath(currentCurve, width * scale, height)}
 					/>
-					{ currentCurve.map(({ anchor, control_1, control_2 }, i, _arr) => {
-						let isSelected = selectedPointIndex == i || pointDragInfo.index == i
+					{ currentCurve?.map(({ anchor, control_1, control_2 }, i, _arr) => {
+						const isSelected = selectedPointIndex == i || pointDragInfo.index == i
 						const p = {
 							x: anchor.x * width * scale,
 							y: anchor.y * height,
@@ -474,46 +502,47 @@ const CurveEditor: React.FC<TrackProps> = (props) => {
 					}) }
 				</g>
 			</svg>
-			<Dialog open={showEditDialog}>
-				<DialogTitle>Edit event</DialogTitle>
-				<DialogContent>
-					<Stack direction={'column'} spacing={'1em'} sx={{ marginTop: '0.5em' }}>
-						<FormControl>
-							<InputLabel htmlFor="form-item-time">Time</InputLabel>
-							<OutlinedInput
-								id="form-item-time"
-								type="number"
-								defaultValue={selectedAnchorPointData!.anchor.x * width / pxPerSecond}
-								endAdornment={<InputAdornment position="end">seconds</InputAdornment>}
-								label="Time"
-								onChange={e => onUpdateAnchorTime(Number(e.target.value))}
-							/>
-						</FormControl>
-						<FormControl>
-							<InputLabel htmlFor="form-item-y">Y</InputLabel>
-							<OutlinedInput
-								id="form-item-y"
-								type="number"
-								defaultValue={selectedAnchorPointData!.anchor.y}
-								label="Y"
-								onChange={e => onUpdateAnchorY(Number(e.target.value))}
-							/>
-						</FormControl>
-					</Stack>
-				</DialogContent>
-				<DialogActions>
-					<Button startIcon={<CloseIcon />} onClick={() => setShowEditDialog(false)}>
-						Cancel
-					</Button>
-					<Button startIcon={<CheckIcon />} sx={{ color: 'green' }} onClick={onConfirmEditAnchorPoint}>
-						Save
-					</Button>
-					<IconButton sx={{ color: 'darkred' }} onClick={onDeleteAnchorPoint}>
-						<DeleteIcon />
-					</IconButton>
-				</DialogActions>
-			</Dialog>
 		</Editor>
+		<Dialog open={showEditDialog} onClose={() => setShowEditDialog(false)}>
+			<DialogTitle>Edit event</DialogTitle>
+			<DialogContent>
+				<Stack direction={'column'} spacing={'1em'} sx={{ marginTop: '0.5em' }}>
+					<FormControl>
+						<InputLabel htmlFor="form-item-time">Time</InputLabel>
+						<OutlinedInput
+							id="form-item-time"
+							type="number"
+							defaultValue={selectedAnchorPointData!.anchor.x * width / pxPerSecond}
+							endAdornment={<InputAdornment position="end">seconds</InputAdornment>}
+							label="Time"
+							onChange={e => onUpdateAnchorTime(Number(e.target.value))}
+						/>
+					</FormControl>
+					<FormControl>
+						<InputLabel htmlFor="form-item-y">Y</InputLabel>
+						<OutlinedInput
+							id="form-item-y"
+							type="number"
+							defaultValue={selectedAnchorPointData!.anchor.y}
+							label="Y"
+							onChange={e => onUpdateAnchorY(Number(e.target.value))}
+						/>
+					</FormControl>
+				</Stack>
+			</DialogContent>
+			<DialogActions>
+				<Button startIcon={<CloseIcon />} onClick={() => setShowEditDialog(false)}>
+					Cancel
+				</Button>
+				<Button startIcon={<CheckIcon />} sx={{ color: 'green' }} onClick={onConfirmEditAnchorPoint}>
+					Save
+				</Button>
+				<IconButton sx={{ color: 'darkred' }} onClick={onDeleteAnchorPoint}>
+					<DeleteIcon />
+				</IconButton>
+			</DialogActions>
+		</Dialog>
+		</>
   )
 }
 

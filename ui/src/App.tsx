@@ -25,11 +25,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import styles from 'styles/app.module.scss';
 
-import TimelineComponent from './components/timeline';
+import TimelineComponent from './components/timeline/timeline';
 import { KeyboardContext, ModifierKeys } from './context/keyboard-context';
 import { RootState, store } from './redux/store';
 import { addTimeline, removeTimeline, renameTimeline, selectTimeline } from './redux/timeline/slice';
-import Logger from './utils/logger';
 
 export interface AppProps {
   outPlugState: Output,
@@ -63,7 +62,7 @@ const App: React.FC<AppProps> = ({
 	const [ addTimelineLoop, setAddTimelineLoop ] = useState(true)
 
 	const nameRef = useRef(null)
-  const timelineRef = useRef<typeof TimelineComponent>(null!)
+  const timelineRef = useRef<TimelineComponent>(null!)
 
 	useEffect(() => {
 		window.addEventListener('keydown', onKey)
@@ -134,7 +133,7 @@ const App: React.FC<AppProps> = ({
 	}
 
 	const onChangeTimeline = () => {
-		Logger.trace("Sending:", store.getState());
+		console.debug("Sending:", store.getState());
 		outPlugState.publish(Buffer.from(encode(store.getState())));
 	}
 
@@ -204,9 +203,7 @@ const App: React.FC<AppProps> = ({
 				</div>
 				{ timeline && (
 					<TimelineComponent
-						// @ts-ignore
 						ref={timelineRef}
-						style={{ flexGrow: 10 }}
 						timeline={timeline}
 						onChange={onChangeTimeline}
 						onPlay={onPlayTimeline}

@@ -28,6 +28,7 @@ pub enum PlayState {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EventTrigger {
+    pub id: String,
     pub position: f64,
     pub data: String,
 }
@@ -38,6 +39,10 @@ pub struct EventSnapshot {
     pub timeline: String,
     /// track name
     pub track: String,
+    /// position of the event on the track, normalized to the timeline duration
+    pub position: f64,
+    /// time at which the event occurred
+    pub time: f64,
     /// event data
     pub data: String,
 }
@@ -76,7 +81,7 @@ pub struct TrackSnapshot {
     /// curve value at snapshot position, if any
     pub value: Option<f64>,
     /// events at snapshot position, if any
-    pub events: Option<Vec<String>>,
+    pub events: Option<Vec<EventTrigger>>,
 }
 
 impl Track {
@@ -113,14 +118,14 @@ impl Track {
         self.name = String::from(name);
     }
 
-    pub fn add_event(&mut self, position: f64, data: String) -> Result<()> {
-        if let Some(ref mut events) = self.events {
-            events.push(EventTrigger { position, data });
-            Ok(())
-        } else {
-            Err(InvalidDataError)
-        }
-    }
+    // pub fn add_event(&mut self, position: f64, data: String) -> Result<()> {
+    //     if let Some(ref mut events) = self.events {
+    //         events.push(EventTrigger { position, data });
+    //         Ok(())
+    //     } else {
+    //         Err(InvalidDataError)
+    //     }
+    // }
 
     pub fn snapshot(&self, prev_position: f64, cur_position: f64) -> TrackSnapshot {
         TrackSnapshot {
@@ -133,7 +138,7 @@ impl Track {
             events: self.events.as_ref().map(|events| {
                 events.iter().fold(Vec::new(), |mut list, event| {
                     if event.occurred_between(prev_position, cur_position) {
-                        list.push(event.data.clone());
+                        list.push(event.clone());
                     }
                     list
                 })
@@ -177,6 +182,8 @@ pub struct Timeline {
 pub struct TimelineSnapshot {
     /// timeline name
     pub name: String,
+    /// timeline duration in seconds
+    pub duration: f64,
     /// time at snapshot
     pub time: f64,
     /// normalized playhead position at snapshot
@@ -325,6 +332,7 @@ impl Timeline {
     fn get_snapshot(&self, prev_position: f64) -> TimelineSnapshot {
         TimelineSnapshot {
             name: self.name.clone(),
+            duration: self.duration,
             time: self.position * self.duration,
             position: self.position,
             is_playing: self.is_playing(),

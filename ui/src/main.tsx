@@ -10,7 +10,6 @@ import App from './App';
 import { store } from './redux/store';
 import { overwriteTimelineData, setTimelineState } from './redux/timeline/slice';
 import { TimelineSnapshot, TimelineState } from './redux/timeline/types';
-import Logger, { LogLevel } from './utils/logger';
 
 type TetherConfig = {
   host: string;
@@ -22,17 +21,9 @@ type TetherConfig = {
 
 const urlParams = new URLSearchParams(window.location.search);
 
-Logger.setLevel(
-	urlParams.has('trace')
-		? LogLevel.TRACE
-		: urlParams.has('debug')
-			? LogLevel.DEBUG
-			: LogLevel.INFO
-);
-
 fetch('/tether-config')
   .then(res => {
-		Logger.debug(res);
+		console.debug(res);
     if (res.ok) return res.json();
     else throw new Error("Could not retrieve Tether configuration. Error: " + res.statusText);
   })
@@ -53,14 +44,14 @@ fetch('/tether-config')
       const stateInput = agent.createInput('state', `${agent_type}/${agent_id}/state`, { qos: 1 });
       // re-hydrate the store whenever a new state comes in
       stateInput.onMessage(payload => {
-        const data: any = decode(payload);
-        Logger.debug('Received state:', data);
-        store.dispatch(overwriteTimelineData(data as TimelineState));
+        const data = decode(payload) as TimelineState;
+        console.debug('Received state:', data);
+        store.dispatch(overwriteTimelineData(data));
       });
 			const updateInput = agent.createInput('update', `${agent_type}/${agent_id}/update`, { qos: 0 });
 			updateInput.onMessage(payload => {
 				const data = decode(payload) as TimelineSnapshot;
-				Logger.debug('Received timeline snapshot:', data);
+				console.debug('Received timeline snapshot:', data);
 				store.dispatch(setTimelineState(data));
 			});
       // create an output to publish requested state changes on
@@ -87,7 +78,7 @@ fetch('/tether-config')
     });
   })
 	.catch(err => {
-		Logger.error('Could not connect to the server. Error:', err);
+		console.error('Could not connect to the server. Error:', err);
 		ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <React.StrictMode>
         <>

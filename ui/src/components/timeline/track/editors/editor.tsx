@@ -1,8 +1,8 @@
 import { Point } from '@/redux/timeline/types';
-import { FC, MouseEvent, PropsWithChildren, useEffect, useState } from 'react';
+import { MouseEvent, PropsWithChildren, useEffect, useState } from 'react';
 import styles from 'styles/components/timeline/track.module.scss';
 
-import { TrackProps } from '..';
+import { TrackProps } from '../track';
 
 export const getMouseEventPosition = (event: MouseEvent<HTMLDivElement | SVGElement>, trackWidth: number, trackHeight: number): Point => {
 	const { pageX, pageY } = event
@@ -28,7 +28,7 @@ interface EditorProps extends PropsWithChildren {
 	onKeyDown?: (key: string) => void,
 }
 
-const Editor: FC<EditorProps> = ({
+const Editor = ({
 	trackProps,
 	showDragRect,
 	onTrackClick,
@@ -38,7 +38,7 @@ const Editor: FC<EditorProps> = ({
 	onTrackRelease,
 	onKeyDown,
 	children,
-}) => {
+}: EditorProps) => {
 
 	const {
 		width,
@@ -53,6 +53,12 @@ const Editor: FC<EditorProps> = ({
 	const [ dragPosition, setDragPosition ] = useState<Point>({ x: 0, y: 0 })
 
 	useEffect(() => {
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (onKeyDown) {
+				onKeyDown(event.key)
+			}
+		}
+
 		if (onKeyDown) {
 			window.addEventListener('keydown', handleKeyDown)
 			return () => {
@@ -61,11 +67,6 @@ const Editor: FC<EditorProps> = ({
 		}
 	}, [onKeyDown])
 
-	const handleKeyDown = (event: KeyboardEvent) => {
-		if (onKeyDown) {
-			onKeyDown(event.key)
-		}
-	}
 
 	const handleSingleClick = (event: MouseEvent<HTMLDivElement>) => {
 		onTrackClick(getMouseEventPosition(event, width * scale, height))

@@ -6,8 +6,8 @@ import { IconButton, MenuItem, Select } from '@mui/material';
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import styles from 'styles/components/timeline/track.module.scss';
 
-import CurveEditor from './editors/curve';
-import EventsEditor from './editors/events';
+import CurveEditor from './editors/curve-editor';
+import EventsEditor from './editors/events/events-editor';
 
 export interface TrackProps {
 	timeline: string,
@@ -34,13 +34,12 @@ const TrackComponent: React.FC<TrackProps> = ({
 }) => {
   const { name, mode, curve } = track
 
-  const ref = useRef(null)
+  const ref = useRef<HTMLDivElement>(null)
 
   const [ _bounds, setBounds ] = useState({ x: 0})
 
   useLayoutEffect(() => {
     if (ref.current) {
-      //@ts-ignore
       const { left } = ref.current.getBoundingClientRect() || { left: 0 }
       setBounds({
         x: left

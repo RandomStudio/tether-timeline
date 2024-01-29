@@ -1,5 +1,5 @@
-import Logger from '@/utils/logger';
 import { createSlice } from '@reduxjs/toolkit';
+import { v4 as uuidv4 } from 'uuid';
 
 import { AnchorPoint, EventTrigger, Timeline, TimelineSnapshot, TimelineState, Track, TrackMode } from './types';
 
@@ -54,11 +54,13 @@ interface UpdateEventsPayload {
 
 const getDefaultCurve = (): AnchorPoint[] => [
   {
+		id: uuidv4(),
     anchor: { x: 0.0, y: 0.5 },
     control_1: { x: 0.0, y: 0.5 },
     control_2: { x: 0.125, y: 0.5 }
   },
   {
+		id: uuidv4(),
     anchor: { x: 1.0, y: 0.5 },
     control_1: { x: 0.875, y: 0.5 },
     control_2: { x: 1.0, y: 0.5 }
@@ -69,6 +71,20 @@ export const findTrack = (state: TimelineState, timeline: string, name: string):
 	state.timelines.find(tl => tl.name === timeline)?.tracks.find(t => t.name === name)
 )
 
+// const findAnchorPointId = (state: TimelineState, timeline: string, track: string, point: AnchorPoint): string | undefined => (
+// 	findTrack(state, timeline, track)?.curve?.find(c => (
+// 		c.anchor.x === point.anchor.x && c.anchor.y === point.anchor.y &&
+// 		c.control_1.x === point.control_1.x && c.control_1.y === point.control_1.y &&
+// 		c.control_2.x === point.control_2.x && c.control_2.y === point.control_2.y
+// 	))?.id
+// )
+
+// const findEventId = (state: TimelineState, timeline: string, track: string, event: EventTrigger): string | undefined => (
+// 	findTrack(state, timeline, track)?.events?.find(e => (
+// 		e.position === event.position && e.data === event.data
+// 	))?.id
+// )
+
 const timelineEditorSlice = createSlice({
   name: 'timelineEditor',
   initialState: {
@@ -78,7 +94,7 @@ const timelineEditorSlice = createSlice({
   reducers: {
     overwriteTimelineData(state, action: PayloadAction<TimelineState>) {
       const newState = action.payload
-      Logger.debug(`Received new state to overwrite in store:`, newState)
+      console.debug(`Received new state to overwrite in store:`, newState)
       if (!Object.keys(newState).includes('timelines')) {
         console.error('Cannot overwrite timeline data; property "timelines" is missing.')
         return
@@ -115,24 +131,12 @@ const timelineEditorSlice = createSlice({
       if (!Object.keys(newState).includes('selectedTimeline')) {
         newState.selectedTimeline = newState.timelines.length ? newState.timelines[0].name : null
       }
-      Logger.trace('Successfully validated new store data. Proceeding to overwrite.')
+
+      console.debug('Successfully validated new store data. Proceeding to overwrite.')
       return {
         ...state,
-        ...newState
+				...newState
       }
-			// return {
-			// 	timelines: newState.timelines.map(t => {
-			// 		const ot = state.timelines.find(tl => tl.name === t.name);
-			// 		if (ot) {
-			// 			return {
-			// 				...ot,
-			// 				...t
-			// 			};
-			// 		}
-			// 		return t;
-			// 	}),
-			// 	selectedTimeline: newState.selectedTimeline,
-			// }
     },
 		setTimelineState(state, action: PayloadAction<TimelineSnapshot>) {
 			const timeline = state.timelines.find(t => t.name === action.payload.name);
@@ -243,7 +247,8 @@ const timelineEditorSlice = createSlice({
       const track = findTrack(state, action.payload.timeline, action.payload.track)
 
       if (track) {
-        track.curve = action.payload.curve.map(({ anchor, control_1, control_2 }) => ({
+        track.curve = action.payload.curve.map(({ id, anchor, control_1, control_2 }) => ({
+					id,
           anchor: {
             x: Math.max(0, Math.min(1, anchor.x)),
             y: Math.max(0, Math.min(1, anchor.y))

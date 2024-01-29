@@ -4,12 +4,14 @@ export interface Point {
 }
 
 export interface AnchorPoint {
+	id: string
   anchor: Point
   control_1: Point
   control_2: Point
 }
 
 export interface EventTrigger {
+	id: string
 	position: number
 	data: string
 }
@@ -23,7 +25,7 @@ export interface Track {
   name: string
 	mode: TrackMode
 	curve: AnchorPoint[] | null
-	events: Array<EventTrigger> | null
+	events: EventTrigger[] | null
 }
 
 export interface Timeline {
@@ -61,7 +63,7 @@ export interface TrackSnapshot {
 
 export interface TimelineSnapshot {
 	// timeline name
-	name: String,
+	name: string,
 	// time at snapshot
 	time: number,
 	// normalized playhead position at snapshot

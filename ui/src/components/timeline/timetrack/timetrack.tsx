@@ -7,7 +7,7 @@ export interface TimeTrackProps {
   duration: number
   pxPerSecond: number
   position: number
-  onSelectPosition: Function
+  onSelectPosition: (position: number) => void,
 }
 
 const TimeTrack: React.FC<TimeTrackProps> = ({
@@ -23,7 +23,6 @@ const TimeTrack: React.FC<TimeTrackProps> = ({
 
   useLayoutEffect(() => {
     if (ref.current) {
-      //@ts-ignore
       const { left } = ref.current.getBoundingClientRect() || { left: 0 }
       setX(left)
     }
