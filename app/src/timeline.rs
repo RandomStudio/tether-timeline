@@ -5,7 +5,11 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::bezier::{AnchorPoint, BezierCurve, Curve, Point2D};
+use crate::color_gradient::{ColorGradient, ColorStop, Gradient};
+use crate::{
+    bezier::{AnchorPoint, BezierCurve, Curve, Point2D},
+    color_gradient::RGBFloat,
+};
 
 pub type Result<T> = std::result::Result<T, InvalidDataError>;
 
@@ -60,6 +64,7 @@ pub enum TrackMode {
     #[default]
     Curve,
     Event,
+    Color,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -72,6 +77,8 @@ pub struct Track {
     pub curve: Option<BezierCurve>,
     /// list of events to trigger at specific times
     pub events: Option<Vec<EventTrigger>>,
+    /// color gradient
+    pub colors: Option<ColorGradient>,
 }
 
 #[derive(Debug, Serialize)]
@@ -82,12 +89,14 @@ pub struct TrackSnapshot {
     pub value: Option<f64>,
     /// events at snapshot position, if any
     pub events: Option<Vec<EventTrigger>>,
+    /// color at snapshot position, if any
+    pub color: Option<RGBFloat>,
 }
 
 impl Track {
     pub fn new(name: &str, mode: TrackMode) -> Self {
-        if mode == TrackMode::Curve {
-            Self {
+        match mode {
+            TrackMode::Curve => Self {
                 name: String::from(name),
                 mode: TrackMode::Curve,
                 curve: Some(vec![
@@ -103,14 +112,39 @@ impl Track {
                     },
                 ]),
                 events: None,
-            }
-        } else {
-            Self {
+                colors: None,
+            },
+            TrackMode::Event => Self {
                 name: String::from(name),
                 mode: TrackMode::Event,
                 curve: None,
                 events: Some(Vec::new()),
-            }
+                colors: None,
+            },
+            TrackMode::Color => Self {
+                name: String::from(name),
+                mode: TrackMode::Color,
+                curve: None,
+                events: None,
+                colors: Some(vec![
+                    ColorStop {
+                        position: 0.0,
+                        color: RGBFloat {
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
+                        },
+                    },
+                    ColorStop {
+                        position: 1.0,
+                        color: RGBFloat {
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
+                        },
+                    },
+                ]),
+            },
         }
     }
 
@@ -143,6 +177,11 @@ impl Track {
                     list
                 })
             }),
+            color: if let Some(ref colors) = self.colors {
+                colors.get_color_at_position(cur_position)
+            } else {
+                None
+            },
         }
     }
 }
@@ -217,6 +256,7 @@ impl Timeline {
             if let Ok(track) = s.add_track(t.name.as_str(), t.mode) {
                 track.curve = t.curve.clone();
                 track.events = t.events.clone();
+                track.colors = t.colors.clone();
             }
         });
         s.seek(src.get_position());

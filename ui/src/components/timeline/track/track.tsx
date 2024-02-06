@@ -6,8 +6,9 @@ import { IconButton, MenuItem, Select } from '@mui/material';
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import styles from 'styles/components/timeline/track.module.scss';
 
+import ColorGradientEditor from './editors/color-gradient-editor';
 import CurveEditor from './editors/curve-editor';
-import EventsEditor from './editors/events/events-editor';
+import EventsEditor from './editors/events-editor';
 
 export interface TrackProps {
 	timeline: string,
@@ -71,6 +72,7 @@ const TrackComponent: React.FC<TrackProps> = ({
 				<Select size="small" variant="outlined" value={mode} onChange={e => onChangeTrackMode(e.target.value as TrackMode)}>
           <MenuItem value={TrackMode.Curve}>Curve</MenuItem>
           <MenuItem value={TrackMode.Event}>Event</MenuItem>
+          <MenuItem value={TrackMode.Color}>Color</MenuItem>
         </Select>
       </div>
 			{ mode === TrackMode.Curve && !!curve && (
@@ -96,6 +98,19 @@ const TrackComponent: React.FC<TrackProps> = ({
           pxPerSecond={pxPerSecond}
           playPosition={playPosition}
           track={track}
+					onSave={onSave}
+				/>
+			)}
+			{ mode === TrackMode.Color && (
+				<ColorGradientEditor
+					timeline={timeline}
+					width={width}
+					height={height}
+					scale={scale}
+					duration={duration}
+					pxPerSecond={pxPerSecond}
+					playPosition={playPosition}
+					track={track}
 					onSave={onSave}
 				/>
 			)}

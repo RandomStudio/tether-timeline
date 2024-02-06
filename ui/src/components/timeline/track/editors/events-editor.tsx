@@ -21,9 +21,9 @@ import {
 import React, { useCallback, useContext, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
-import { TrackProps } from '../../track';
-import Editor, { getMouseEventPosition } from '../editor';
-import EventHandle from './event-handle';
+import { TrackProps } from '../track';
+import Editor, { getMouseEventPosition } from './editor';
+import EventHandle from './events/event-handle';
 
 interface EventHandleDragInfo {
   id: string
@@ -192,7 +192,6 @@ const EventsEditor = (props: TrackProps) => {
 
 	const onUpdateEventData = (data: string) => {
 		setSelectedEventData({ ...selectedEventData, data })
-		console.log("*** UPDATED EVENT DATA:", data)
 	}
 
 	const onConfirmEditEvent = useCallback(() => {
@@ -200,7 +199,6 @@ const EventsEditor = (props: TrackProps) => {
 			console.warn('Edited non-selected item. Ignoring.')
 			return
 		}
-		console.log("*** EDITED EVENT:", selectedEventData)
 		store.dispatch(updateEvents({
 			timeline: store.getState().selectedTimeline || '',
 			track: name,

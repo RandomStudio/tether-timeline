@@ -16,9 +16,21 @@ export interface EventTrigger {
 	data: string
 }
 
+export interface RGBFloat {
+	r: number
+	g: number
+	b: number
+}
+
+export interface ColorStop {
+	position: number
+	color: RGBFloat
+}
+
 export enum TrackMode {
 	Curve = "Curve",
 	Event = "Event",
+	Color = "Color",
 }
 
 export interface Track {
@@ -26,6 +38,7 @@ export interface Track {
 	mode: TrackMode
 	curve: AnchorPoint[] | null
 	events: EventTrigger[] | null
+	colors: ColorStop[] | null
 }
 
 export interface Timeline {
@@ -59,6 +72,8 @@ export interface TrackSnapshot {
 	value?: number,
 	// events at snapshot position, if any
 	events?: Array<string>,
+	// color at snapshot poisition, if any
+	color?: RGBFloat,
 }
 
 export interface TimelineSnapshot {

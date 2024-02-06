@@ -1,7 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { v4 as uuidv4 } from 'uuid';
 
-import { AnchorPoint, EventTrigger, Timeline, TimelineSnapshot, TimelineState, Track, TrackMode } from './types';
+import { AnchorPoint, ColorStop, EventTrigger, Timeline, TimelineSnapshot, TimelineState, Track, TrackMode } from './types';
 
 import type { PayloadAction } from "@reduxjs/toolkit"
 interface AddTimelinePayload {
@@ -49,7 +49,13 @@ interface UpdateCurvePayload {
 interface UpdateEventsPayload {
 	timeline: string
 	track: string
-	events: Array<EventTrigger>
+	events: EventTrigger[]
+}
+
+interface UpdateColorsPayload {
+	timeline: string
+	track: string
+	colors: ColorStop[]
 }
 
 const getDefaultCurve = (): AnchorPoint[] => [
@@ -65,6 +71,17 @@ const getDefaultCurve = (): AnchorPoint[] => [
     control_1: { x: 0.875, y: 0.5 },
     control_2: { x: 1.0, y: 0.5 }
   },
+]
+
+const getDefaultColors = (): ColorStop[] => [
+	{
+		position: 0.0,
+		color: { r: 0.0, g: 0.0, b: 0.0 },
+	},
+	{
+		position: 1.0,
+		color: { r: 0.0, g: 0.0, b: 0.0 },
+	},
 ]
 
 export const findTrack = (state: TimelineState, timeline: string, name: string): Track | undefined => (
@@ -213,6 +230,7 @@ const timelineEditorSlice = createSlice({
 						mode: TrackMode.Curve,
             curve: getDefaultCurve(),
 						events: null,
+						colors: null,
           } as Track
         ]
       }
@@ -234,12 +252,22 @@ const timelineEditorSlice = createSlice({
 			const track = findTrack(state, action.payload.timeline, action.payload.track)
 			if (track && action.payload.mode !== track.mode) {
 				track.mode = action.payload.mode
-				if (track.mode === TrackMode.Curve) {
-					track.curve = getDefaultCurve()
-					track.events = null
-				} else {
-					track.curve = null
-					track.events = []
+				switch (track.mode) {
+					case TrackMode.Curve:
+						track.curve = getDefaultCurve()
+						track.events = null
+						track.colors = null
+						break
+					case TrackMode.Event:
+						track.curve = null
+						track.events = []
+						track.colors = null
+						break
+					case TrackMode.Color:
+						track.curve = null
+						track.events = []
+						track.colors = getDefaultColors()
+						break
 				}
 			}
 		},
@@ -270,6 +298,12 @@ const timelineEditorSlice = createSlice({
 				track.events = action.payload.events
 			}
 		},
+		updateColors(state, action: PayloadAction<UpdateColorsPayload>) {
+			const track = findTrack(state, action.payload.timeline, action.payload.track)
+			if (track) {
+				track.colors = action.payload.colors
+			}
+		}
   }
 })
 
@@ -287,6 +321,7 @@ export const {
 	setTrackMode,
   updateCurve,
 	updateEvents,
+	updateColors,
 } = timelineEditorSlice.actions
 
 export default timelineEditorSlice.reducer

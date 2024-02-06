@@ -21,6 +21,7 @@ use crate::signal_handler::handle_exit_signals;
 use crate::tether::{ControlMessage, Tether};
 
 mod bezier;
+mod color_gradient;
 mod model;
 mod server;
 mod signal_handler;
