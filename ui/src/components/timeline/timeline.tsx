@@ -7,8 +7,6 @@ import PauseIcon from '@mui/icons-material/Pause';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
-import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
-import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import {
@@ -32,7 +30,7 @@ import { Timeline } from '../../redux/timeline/types';
 import TimeTrack from './timetrack/timetrack';
 import TrackComponent from './track/track';
 
-const PX_PER_SECOND = 50
+const PX_PER_SECOND = 100
 
 export interface TimelineProps {
   timeline: Timeline,
@@ -45,7 +43,6 @@ export interface TimelineProps {
 
 export interface TimelineState {
   scale: number
-  largeTrackHeight: boolean
   lastUpdatedAt: number
   interval?: NodeJS.Timer
   elementWidth: number
@@ -57,7 +54,6 @@ class TimelineComponent extends React.Component<TimelineProps, TimelineState> {
   constructor(props: TimelineProps) {
     super(props)
     this.state = {
-      largeTrackHeight: false,
       scale: 1,
       lastUpdatedAt: 0,
       settingDuration: false,
@@ -74,11 +70,6 @@ class TimelineComponent extends React.Component<TimelineProps, TimelineState> {
     } as Timeline
     store.dispatch(updateTimeline(newTimeline))
 		onChange()
-  }
-
-  toggleLargeTrackHeight = () => {
-    const { largeTrackHeight } = this.state
-    this.setState({ largeTrackHeight: !largeTrackHeight })
   }
 
   setScale = (scale: number) => {
@@ -154,7 +145,7 @@ class TimelineComponent extends React.Component<TimelineProps, TimelineState> {
 
   render() {
     const { timeline: { name, duration, loopPlayback, tracks, position, isPlaying }, onChange } = this.props
-    const { largeTrackHeight, scale, settingDuration } = this.state
+    const { scale, settingDuration } = this.state
     return (
       <div className={ styles.timeline }>
         <div className={ styles.controls }>
@@ -178,9 +169,6 @@ class TimelineComponent extends React.Component<TimelineProps, TimelineState> {
           <span className={ styles.time }>{ this.formatTimecode(position * duration) } sec</span>
           <div className={ styles.spacer } />
           <div className={ styles['view-control'] }>
-            <Button size="small" variant="contained" style={{ marginRight: '1em' }} onClick={this.toggleLargeTrackHeight}>
-              { largeTrackHeight ? <UnfoldLessIcon /> : <UnfoldMoreIcon /> }
-            </Button>
             <ZoomOutIcon onClick={() => this.setScale(Math.max(0, this.state.scale - 0.1))} />
             <Slider
               size="small"
@@ -210,7 +198,7 @@ class TimelineComponent extends React.Component<TimelineProps, TimelineState> {
                 key={`track-${index}`}
 								timeline={name}
                 width={duration * PX_PER_SECOND}
-                height={largeTrackHeight ? 100 : 50}
+                height={75}
                 scale={scale}
                 duration={duration}
                 pxPerSecond={PX_PER_SECOND}
@@ -242,10 +230,6 @@ class TimelineComponent extends React.Component<TimelineProps, TimelineState> {
                 )}
                 { !settingDuration && (
                   <>
-                    {/* <TextField
-                      variant="outlined" style={{ margin: '0.5em' }}
-                      value={`${duration} second${duration !== 1 ? 's' : ''}`}
-                    /> */}
 										<p style={{margin: '0.5em'}}>{ `${duration} second${duration !== 1 ? 's' : ''}` }</p>
                     <IconButton size="small" onClick={_e => this.setState({ settingDuration: true })}>
                       <EditIcon />

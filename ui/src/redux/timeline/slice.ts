@@ -242,8 +242,12 @@ const timelineEditorSlice = createSlice({
       }))
     },
     renameTrack(state, action: PayloadAction<RenameTrackPayload>) {
-      const track = findTrack(state, action.payload.timeline, action.payload.oldName)
+			if (findTrack(state, action.payload.timeline, action.payload.newName)) {
+				console.warn(`Cannot rename track; a track with the name "${action.payload.newName}" already exists.`)
+				return;
+			}
 
+      const track = findTrack(state, action.payload.timeline, action.payload.oldName)
       if (track) {
         track.name = action.payload.newName
       }

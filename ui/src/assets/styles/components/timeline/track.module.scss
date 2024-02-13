@@ -13,11 +13,19 @@
     flex-direction: row;
     align-items: center;
     border: 1px solid #999;
+		padding: 0.5em;
+		box-sizing: border-box;
+		color: #444;
 
     .name {
       padding: 0;
       margin: 0;
+			margin-right: 0.5em;
     }
+
+		.mode {
+			font-size: 0.8em;
+		}
 
     .spacer {
       flex-grow: 1;
@@ -27,10 +35,11 @@
   .body {
     width: 100%;
     height: 50px;
-    margin: 5px 0;
+    margin: -1px 0 10px 0;
     overflow: visible;
     position: relative;
     border: 1px solid #999;
+		box-sizing: border-box;
 
 		.bg {
 			width: 100%;
@@ -137,9 +146,11 @@
     top: 50%;
 
 		.label {
-			transform: rotate(90deg);
-			margin-left: -12px;
+			width: 24px;
+			height: 24px;
+			margin-left: -11px;
 			margin-top: -12px;
+			transform: rotate(90deg);
 			// color: #ddd;
 
 			path {
@@ -162,9 +173,9 @@
 	.gradient {
 		position: absolute;
 		left: 0;
-		top: 60%;
+		top: 0;
 		width: 100%;
-		height: 20%;
+		height: 50px;
 		border: 1px solid #444;
 		background: repeating-conic-gradient(#CCC 0% 25%, transparent 0% 50%) 50% / 10px 10px
 	}
@@ -172,12 +183,14 @@
 	.colorStop {
 		cursor: pointer;
 		position: absolute;
-		top: 35%;
+		top: 60px;
 
 		.label {
-			transform: rotate(90deg);
-			margin-left: -12px;
+			width: 24px;
+			height: 24px;
+			margin-left: -11px;
 			margin-top: -12px;
+			transform: rotate(-90deg);
 
 			path {
 				stroke: #444;
