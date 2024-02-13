@@ -328,8 +328,8 @@ const CurveEditor = (props: TrackProps) => {
 		setShowEditDialog(false)
 	}
 
-	const onKeyDown = useCallback((key: string) => {
-		switch (key.toLowerCase()) {
+	const onKeyDown = (event: KeyboardEvent) => {
+		switch (event.key.toLowerCase()) {
 			case "delete":
 			case "backspace":
 				if (!showEditDialog && selectedPointIndex > -1) {
@@ -341,7 +341,7 @@ const CurveEditor = (props: TrackProps) => {
 					onConfirmEditAnchorPoint()
 				}
 		}
-	}, [showEditDialog, selectedPointIndex, onDeleteAnchorPoint, onConfirmEditAnchorPoint])
+	}
 
   /**
    * Create an SVG path from a list of normalized anchors and control points, and the size

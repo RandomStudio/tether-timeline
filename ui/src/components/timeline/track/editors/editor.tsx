@@ -25,7 +25,7 @@ interface EditorProps extends PropsWithChildren {
 	onTrackPress: (position: Point) => void,
 	onTrackDrag: (start: Point, position: Point) => void,
 	onTrackRelease: (position: Point) => void,
-	onKeyDown?: (key: string) => void,
+	onKeyDown?: (event: KeyboardEvent) => void,
 }
 
 const Editor = ({
@@ -53,20 +53,14 @@ const Editor = ({
 	const [ dragPosition, setDragPosition ] = useState<Point>({ x: 0, y: 0 })
 
 	useEffect(() => {
-		const handleKeyDown = (event: KeyboardEvent) => {
-			if (onKeyDown) {
-				onKeyDown(event.key)
-			}
-		}
-
 		if (onKeyDown) {
-			window.addEventListener('keydown', handleKeyDown)
+			console.log('Registering key down listener')
+			window.addEventListener('keydown', onKeyDown)
 			return () => {
-				window.removeEventListener('keydown', handleKeyDown)
+				window.removeEventListener('keydown', onKeyDown)
 			}
 		}
 	}, [onKeyDown])
-
 
 	const handleSingleClick = (event: MouseEvent<HTMLDivElement>) => {
 		onTrackClick(getMouseEventPosition(event, width * scale, height))
@@ -109,6 +103,8 @@ const Editor = ({
 		}
 	}
 
+	const frameWidth = pxPerSecond * scale / 60;
+
 	return (
 		<div
 			className={ `${styles.body} editor` }
@@ -117,17 +113,26 @@ const Editor = ({
 			onMouseMove={onMouseMove}
 			onMouseUp={onMouseUp}
 			onMouseLeave={onMouseLeave}
-			style={{ height: `${height}px`, }}
+			style={{
+				height: `${height}px`,
+				background: `repeating-linear-gradient(
+					to right,
+					#eee 0px,
+					#eee ${frameWidth}px,
+					transparent ${frameWidth + 1}px,
+					transparent ${2 * frameWidth}px
+				)`
+			}}
 		>
 			<div
 				className={ styles.bg }
 				style={{
 					background: `repeating-linear-gradient(
 						to right,
-						#ddd 0px,
-						#ddd 1px,
-						#eee 1px,
-						#eee ${pxPerSecond * scale}px
+						#bbb 0px,
+						#bbb 1px,
+						transparent 1px,
+						transparent ${pxPerSecond * scale}px
 					)`
 				}}
 				onMouseDown={onMouseDownBg}

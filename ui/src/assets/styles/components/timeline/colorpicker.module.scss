@@ -126,22 +126,31 @@ $hue-gradient: #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #
     .swatch {
       width: 3em;
       height: 3em;
-      background-color: white;
+      border: 1px solid black;
+			background: repeating-conic-gradient(#CCC 0% 25%, transparent 0% 50%) 50% / 10px 10px
     }
 
     .rgb-labels {
       @include flex-column;
       font-size: 0.8em;
       margin-left: 1em;
+
+			span {
+				margin-bottom: 0.25em;
+
+				&:last-child {
+					margin-bottom: 0;
+				}
+
+				input {
+					margin-left: 0.5em;
+				}
+			}
     }
   }
-}
 
-.colorPickerWWA {
-  width: 10em;
-  margin: 0 1em;
-
-  .slider {
-    filter: drop-shadow(0 0 1px rgba(0,0,0,.5));
-  }
+	.alphaSlider {
+		margin: 0;
+  	height: 8;
+	}
 }

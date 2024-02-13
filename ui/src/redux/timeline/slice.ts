@@ -76,11 +76,11 @@ const getDefaultCurve = (): AnchorPoint[] => [
 const getDefaultColors = (): ColorStop[] => [
 	{
 		position: 0.0,
-		color: { r: 0.0, g: 0.0, b: 0.0 },
+		color: { r: 0.0, g: 0.0, b: 0.0, a: 0.0 },
 	},
 	{
 		position: 1.0,
-		color: { r: 0.0, g: 0.0, b: 0.0 },
+		color: { r: 0.0, g: 0.0, b: 0.0, a: 0.0 },
 	},
 ]
 

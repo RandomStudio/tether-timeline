@@ -32,7 +32,7 @@ import { addTimeline, removeTimeline, renameTimeline, selectTimeline } from './r
 
 export interface AppProps {
   outPlugState: Output,
-  outputSelectTimeline: Output,
+  outPlugSelectTimeline: Output,
   outPlugPlay: Output,
   outPlugPause: Output,
   outPlugSeek: Output,
@@ -40,7 +40,7 @@ export interface AppProps {
 
 const App: React.FC<AppProps> = ({
 	outPlugState,
-	outputSelectTimeline,
+	outPlugSelectTimeline,
 	outPlugPlay,
 	outPlugPause,
 	outPlugSeek,
@@ -90,7 +90,7 @@ const App: React.FC<AppProps> = ({
 
   const setSelectedTimeline = (name: string) => {
     store.dispatch(selectTimeline(name))
-		outputSelectTimeline.publish(Buffer.from(encode(store.getState().selectedTimeline)))
+		outPlugSelectTimeline.publish(Buffer.from(encode(store.getState().selectedTimeline)))
   }
 
   const editName = () => {

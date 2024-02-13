@@ -5,23 +5,8 @@ import React, { useRef, useState } from 'react';
 import { MouseEvent, TouchEvent } from 'react';
 import styles from 'styles/components/timeline/colorpicker.module.scss';
 
-export const RGBFloatToNumber = (color: RGBFloat): number => {
-	const { r, g, b } = color;
-	return ((r * 255) << 16) | ((g * 255) << 8) | (b * 255);
-}
-
-export const RGBFloatToHexString = (color: RGBFloat): string => (
-	numberToHexString(RGBFloatToNumber(color))
-)
-
-export const numberToRGBFloat = (color: number): RGBFloat => ({
-	r: (color >> 16 & 0xFF) / 0xFF,
-	g: (color >> 8 & 0xFF) / 0xFF,
-	b: (color & 0xFF) / 0xFF,
-})
-
-export const numberToHexString = (color: number) => (
-	`#${color.toString(16).padStart(6, '0')}`
+export const RGBFloatToCSSString = (color: RGBFloat): string => (
+	`rgba(${Math.round(color.r * 255)}, ${Math.round(color.g * 255)}, ${Math.round(color.b * 255)}, ${color.a})`
 )
 
 enum PickEventType {
@@ -31,16 +16,21 @@ enum PickEventType {
 }
 
 interface ColorPickerProps {
-  color: number;
-  onChange: (value: number) => void;
+  color: RGBFloat;
+  onChange: (color: RGBFloat) => void;
   onRelease?: () => void;
   enabled: boolean;
 }
+
+const clamp = (value: number, min: number, max: number): number => (
+	Math.max(min, Math.min(max, value))
+);
 
 const ColorPicker = ({ color, onChange, onRelease, enabled }: ColorPickerProps) => {
   const satFieldRef = useRef<HTMLDivElement>(null);
 
   const [ isDraggingSaturation, setIsDraggingSaturation ] = useState<boolean>(false);
+	const [ alpha, setAlpha ] = useState<number>(color.a);
 
   const onMouseSaturation = (e: MouseEvent | TouchEvent) => {
     switch (e.type) {
@@ -116,18 +106,39 @@ const ColorPicker = ({ color, onChange, onRelease, enabled }: ColorPickerProps) 
   }
 
   const setHue = (hue: number) => {
-    const hsv = convert.hex.hsv(color.toString(16));
+    const hsv = convert.rgb.hsv([ Math.round(color.r * 255), Math.round(color.g * 255), Math.round(color.b * 255) ]);
     const [v, s] = hsv.reverse();
-    onChange(parseInt(convert.hsv.hex([hue, s, v]), 16));
+		const [ r, g, b ] = convert.hsv.rgb([hue, s, v]);
+    onChange({ r: r / 255, g: g / 255, b: b / 255, a: alpha });
   }
 
   const setSaturationBrightness = (saturation: number, brightness: number) => {
-    const hsv = convert.hex.hsv(color.toString(16));
+    const hsv = convert.rgb.hsv([ Math.round(color.r * 255), Math.round(color.g * 255), Math.round(color.b * 255) ]);
     const [h] = hsv;
-    onChange(parseInt(convert.hsv.hex([h, saturation, brightness]), 16));
+		const [ r, g, b ] = convert.hsv.rgb([h, saturation, brightness]);
+    onChange({ r: r / 255, g: g / 255, b: b / 255, a: alpha });
   }
 
-  const [h, s, v] = convert.hex.hsv(color.toString(16));
+	const selectAlpha = (alpha: number) => {
+		setAlpha(clamp(alpha, 0, 1));
+		onChange({ ...color, a: clamp(alpha, 0, 1) });
+	}
+
+	const onUpdateChannel = (r: number, g: number, b: number) => {
+		console.log(r, g, b)
+		if (!Number.isInteger(r) || !Number.isInteger(g) || !Number.isInteger(b)) {
+			console.warn(`Ignoring invalid color values:`, r, g, b);
+			return;
+		}
+		onChange({
+			r: clamp(r, 0, 255) / 255,
+			g: clamp(g, 0, 255) / 255,
+			b: clamp(b, 0, 255) / 255,
+			a: alpha
+		});
+	}
+
+  const [h, s, v] = convert.rgb.hsv([ Math.round(color.r * 255), Math.round(color.g * 255), Math.round(color.b * 255) ]);
   const [r, g, b] = convert.hsv.rgb([h, 100, 100]);
 
   return (
@@ -161,22 +172,80 @@ const ColorPicker = ({ color, onChange, onRelease, enabled }: ColorPickerProps) 
         min={0}
         max={360}
         step={0.001}
+				value={h}
         onChange={(_e, v) => setHue(v as number)}
       />
+			<Slider
+				className={styles.alphaSlider}
+				min={0}
+				max={1}
+				step={0.001}
+				value={alpha}
+				onChange={(_e, v) => selectAlpha(v as number)}
+			/>
       <div className={styles.selection}>
-        <div className={styles.swatch} style={{ backgroundColor: `#${color.toString(16).padStart(6, '0')}` }} />
+        <div className={styles.swatch}>
+					<div style={{ width: '100%', height: '100%', backgroundColor: RGBFloatToCSSString(color) }} />
+				</div>
         <div className={styles['rgb-labels']}>
           <span>
             R:
-            {(color >> 16) & 0xFF}
+						<input
+							type="number"
+							min={0}
+							max={255}
+							value={Math.round(color.r * 255)}
+							width={5}
+							onChange={e => onUpdateChannel(
+								Number.parseInt(e.target.value),
+								Math.round(color.g * 255),
+								Math.round(color.b * 255)
+							)}
+						/>
           </span>
           <span>
             G:
-            {(color >> 8) & 0xFF}
+						<input
+							type="number"
+							min={0}
+							max={255}
+							value={Math.round(color.g * 255)}
+							width={5}
+							onChange={e => onUpdateChannel(
+								Math.round(color.r * 255),
+								Number.parseInt(e.target.value),
+								Math.round(color.b * 255)
+							)}
+						/>
           </span>
           <span>
             B:
-            {color & 0xFF}
+						<input
+							type="number"
+							min={0}
+							max={255}
+							value={Math.round(color.b * 255)}
+							width={5}
+							onChange={e => onUpdateChannel(
+								Math.round(color.r * 255),
+								Math.round(color.g * 255),
+								Number.parseInt(e.target.value)
+							)}
+						/>
+          </span>
+          <span>
+						A:
+						<input
+							type="number"
+							min={0}
+							max={1}
+							step={0.001}
+							value={alpha.toPrecision(3)}
+							width={5}
+							onChange={e => selectAlpha(
+								Number.parseFloat(e.target.value)
+							)}
+						/>
           </span>
         </div>
       </div>

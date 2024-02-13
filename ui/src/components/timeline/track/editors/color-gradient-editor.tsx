@@ -22,9 +22,16 @@ import { useCallback, useState } from 'react';
 import styles from 'styles/components/timeline/track.module.scss';
 
 import { TrackProps } from '../track';
-import ColorPicker, { numberToRGBFloat, RGBFloatToNumber } from './color/colorpicker';
+import ColorPicker, { RGBFloatToCSSString } from './color/colorpicker';
 import Gradient from './color/gradient';
 import Editor, { getMouseEventPosition } from './editor';
+
+const lerpColors = (a: RGBFloat, b: RGBFloat, factor: number): RGBFloat => ({
+	r: a.r + factor * (b.r - a.r),
+	g: a.g + factor * (b.g - a.g),
+	b: a.b + factor * (b.b - a.b),
+	a: a.a + factor * (b.a - a.a),
+})
 
 interface DragInfo {
 	index: number
@@ -56,7 +63,7 @@ const ColorGradientEditor = (props: TrackProps) => {
 
 	const [ selectedIndex, setSelectedIndex ] = useState(-1)
 	const [ showEditDialog, setShowEditDialog ] = useState(false)
-	const [ selectedColorStopData, setSelectedColorStopData ] = useState<ColorStop>({ position: 0, color: { r: 0, g: 0, b: 0 } })
+	const [ selectedColorStopData, setSelectedColorStopData ] = useState<ColorStop>({ position: 0, color: { r: 0, g: 0, b: 0, a: 0 } })
 	const [ dragInfo, setDragInfo ] = useState<DragInfo>({ ...emptyDragInfo })
 
 	const onTrackClick = (_position: Point) => {
@@ -69,7 +76,14 @@ const ColorGradientEditor = (props: TrackProps) => {
 
 	const onTrackDoubleClick = (position: Point) => {
 		const { x } = position
-		const colorStop = { position: x, color: { r: 0, g: 0, b: 0 } } as ColorStop
+		const prev = getItemBefore(position.x);
+		const next = getItemAfter(position.x);
+		const colorStop = {
+			position: x,
+			color: !!prev && !!next
+				? lerpColors(prev.color, next.color, (position.x - prev.position) / (next.position - prev.position))
+				: { r: 0, g: 0, b: 0, a: 1 }
+		} as ColorStop
 		store.dispatch(updateColors({
 			timeline: store.getState().selectedTimeline || '',
 			track: name,
@@ -81,6 +95,22 @@ const ColorGradientEditor = (props: TrackProps) => {
 			]
 		}))
 		onSave()
+	}
+
+	const getItemBefore = (position: number): ColorStop | null => {
+		if (!colors || !colors.length) return null
+		const allBefore: ColorStop[] = colors.filter(c => c.position < position)
+		return allBefore.length
+			? allBefore.sort((a, b) => a.position - b.position).pop()!
+			: colors[0]
+	}
+
+	const getItemAfter = (position: number): ColorStop | null => {
+		if (!colors || !colors.length) return null
+		const allBefore: ColorStop[] = colors.filter(c => c.position > position)
+		return allBefore.length
+			? allBefore.sort((a, b) => a.position - b.position).shift()!
+			: colors[colors.length - 1]
 	}
 
 	const onTrackDrag = (_start: Point, position: Point) => {
@@ -197,15 +227,16 @@ const ColorGradientEditor = (props: TrackProps) => {
 		setShowEditDialog(false)
 	}, [colors, name, onSave, selectedIndex])
 
-	const onKeyDown = useCallback((key: string) => {
-		switch (key.toLowerCase()) {
+	const onKeyDown = useCallback((event: KeyboardEvent) => {
+		console.log('*** KEY DOWN (COLOR GRADIENT) ***', event.key, showEditDialog)
+		switch (event.key.toLowerCase()) {
 			case "delete":
 			case "backspace":
 				if (!showEditDialog && selectedIndex > -1) {
 					onDeleteColorStop()
 				}
 				break
-			case "enter":
+			case 'enter':
 				if (showEditDialog) {
 					onConfirmEditColorStop()
 				}
@@ -254,7 +285,7 @@ const ColorGradientEditor = (props: TrackProps) => {
 				>
 					<LabelIcon
 						className={`${styles.label} ${index === selectedIndex ? styles.selected : ''}`}
-						sx={{ color: `#${RGBFloatToNumber(color).toString(16).padStart(6, '0')}` }}
+						sx={{ color: RGBFloatToCSSString(color) }}
 					/>
 				</div>
 			))}
@@ -277,9 +308,9 @@ const ColorGradientEditor = (props: TrackProps) => {
 					<FormControl>
 						<InputLabel>Color</InputLabel>
 						<ColorPicker
-							color={RGBFloatToNumber(selectedColorStopData.color)}
-							onChange={(color: number) => {
-								onUpdateColorStopData(numberToRGBFloat(color))
+							color={selectedColorStopData.color}
+							onChange={(color: RGBFloat) => {
+								onUpdateColorStopData(color)
 							}}
 							enabled={true}
 						/>

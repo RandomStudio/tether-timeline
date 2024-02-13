@@ -65,7 +65,7 @@ fetch('/tether-config')
           <Provider store={store}>
               <App
 								outPlugState={ outputState }
-								outputSelectTimeline={ outputSelectTimeline }
+								outPlugSelectTimeline={ outputSelectTimeline }
 								outPlugPlay={ outputPlay }
 								outPlugPause={ outputPause }
 								outPlugSeek={ outputSeek }

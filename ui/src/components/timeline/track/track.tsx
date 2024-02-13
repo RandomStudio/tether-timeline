@@ -69,7 +69,13 @@ const TrackComponent: React.FC<TrackProps> = ({
         </IconButton>
         <p className={ styles.name }>{ name }</p>
         <div className={ styles.spacer } />
-				<Select size="small" variant="outlined" value={mode} onChange={e => onChangeTrackMode(e.target.value as TrackMode)}>
+				<Select
+					size="small"
+					variant="outlined"
+					sx={{ margin: '0.25em' }}
+					value={mode}
+					onChange={e => onChangeTrackMode(e.target.value as TrackMode)}
+				>
           <MenuItem value={TrackMode.Curve}>Curve</MenuItem>
           <MenuItem value={TrackMode.Event}>Event</MenuItem>
           <MenuItem value={TrackMode.Color}>Color</MenuItem>

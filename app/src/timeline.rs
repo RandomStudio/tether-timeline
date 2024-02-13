@@ -3,6 +3,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+use log::error;
 use serde::{Deserialize, Serialize};
 
 use crate::color_gradient::{ColorGradient, ColorStop, Gradient};
@@ -133,6 +134,7 @@ impl Track {
                             r: 0.0,
                             g: 0.0,
                             b: 0.0,
+                            a: 0.0,
                         },
                     },
                     ColorStop {
@@ -141,6 +143,7 @@ impl Track {
                             r: 0.0,
                             g: 0.0,
                             b: 0.0,
+                            a: 0.0,
                         },
                     },
                 ]),
@@ -335,36 +338,47 @@ impl Timeline {
     /// Note that this returns Some value only at the specified frame rate for this timeline. Between
     /// "frames", it will return None.
     pub fn update(&mut self) -> Option<TimelineSnapshot> {
-        if self.last_updated.elapsed().unwrap() < self.frame_duration {
-            None
-        } else {
-            match &self.state {
-                PlayState::Stopped => {
-                    self.last_updated = SystemTime::now();
-                    if self.update_required {
-                        self.update_required = false;
-                        Some(self.get_snapshot(self.position))
-                    } else {
-                        None
-                    }
-                }
-                PlayState::Playing(started_at, from_position) => {
-                    let prev_position = self.position;
-                    let since_playback_start =
-                        started_at.elapsed().unwrap_or(Duration::ZERO).as_secs_f64();
-                    let new_position = from_position + since_playback_start / self.duration;
-                    if self.loop_playback {
-                        self.position = new_position % 1.0;
-                    } else {
-                        self.position = new_position.clamp(0.0, 1.0);
-                        if self.position == 1.0 {
-                            self.stop();
+        match self.last_updated.elapsed() {
+            Ok(elapsed) => {
+                if elapsed < self.frame_duration {
+                    None
+                } else {
+                    match &self.state {
+                        PlayState::Stopped => {
+                            self.last_updated = SystemTime::now();
+                            if self.update_required {
+                                self.update_required = false;
+                                Some(self.get_snapshot(self.position))
+                            } else {
+                                None
+                            }
+                        }
+                        PlayState::Playing(started_at, from_position) => {
+                            let prev_position = self.position;
+                            let since_playback_start =
+                                started_at.elapsed().unwrap_or(Duration::ZERO).as_secs_f64();
+                            let new_position = from_position + since_playback_start / self.duration;
+                            if self.loop_playback {
+                                self.position = new_position % 1.0;
+                            } else {
+                                self.position = new_position.clamp(0.0, 1.0);
+                                if self.position == 1.0 {
+                                    self.stop();
+                                }
+                            }
+                            self.last_updated = SystemTime::now();
+                            self.update_required = false;
+                            Some(self.get_snapshot(prev_position))
                         }
                     }
-                    self.last_updated = SystemTime::now();
-                    self.update_required = false;
-                    Some(self.get_snapshot(prev_position))
                 }
+            }
+            Err(err) => {
+                error!(
+                    "Error getting elapsed time for timeline {}: {}",
+                    self.name, err
+                );
+                None
             }
         }
     }

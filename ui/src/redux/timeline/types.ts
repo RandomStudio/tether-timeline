@@ -20,6 +20,7 @@ export interface RGBFloat {
 	r: number
 	g: number
 	b: number
+	a: number
 }
 
 export interface ColorStop {

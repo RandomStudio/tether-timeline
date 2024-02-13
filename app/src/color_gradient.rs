@@ -5,6 +5,7 @@ pub struct RGBFloat {
     pub r: f64,
     pub g: f64,
     pub b: f64,
+    pub a: f64,
 }
 
 impl RGBFloat {
@@ -13,6 +14,7 @@ impl RGBFloat {
             r: self.r + factor * (destination.r - self.r),
             g: self.g + factor * (destination.g - self.g),
             b: self.b + factor * (destination.b - self.b),
+            a: self.a + factor * (destination.a - self.a),
         }
     }
 }

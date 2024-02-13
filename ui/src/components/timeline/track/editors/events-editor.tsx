@@ -225,8 +225,8 @@ const EventsEditor = (props: TrackProps) => {
 		setShowEditDialog(false)
 	}, [events, name, onSave, selectedIds])
 
-	const onKeyDown = useCallback((key: string) => {
-		switch (key.toLowerCase()) {
+	const onKeyDown = (event: KeyboardEvent) => {
+		switch (event.key.toLowerCase()) {
 			case "delete":
 			case "backspace":
 				if (!showEditDialog && selectedIds.length) {
@@ -238,7 +238,7 @@ const EventsEditor = (props: TrackProps) => {
 					onConfirmEditEvent()
 				}
 		}
-	}, [showEditDialog, selectedIds, onConfirmEditEvent, onDeleteEvent])
+	}
 
 	if (mode !== TrackMode.Event || !events) {
 		return <></>

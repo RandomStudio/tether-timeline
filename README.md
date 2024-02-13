@@ -3,7 +3,7 @@
 This is a Rust application that allows the creation and playback of timelines through a web UI.  
 You can create an arbitrary number of timelines, name them, set their duration, and specify whether or not they should loop.
 
-A timeline can contain one or more tracks, which can currently be of the `curve` or `event` type.  
+A timeline can contain one or more tracks, which can currently be of the `curve`, `event` or `color` type.  
 Curve tracks define a single cubic bezier curve, and emit a single value on update.  
 Event tracks contain one or more triggers at distinct times, each containing an optional piece of data (currently limited to strings). Events are emitted
 
